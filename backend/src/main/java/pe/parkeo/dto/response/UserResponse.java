@@ -23,4 +23,8 @@ public class UserResponse {
     private List<String> roles;
     private LocalDateTime createdAt;
     private LocalDateTime lastLoginAt;
+
+    public String getRole() {
+        return (roles != null && !roles.isEmpty()) ? roles.get(0) : "ROLE_USER";
+    }
 }

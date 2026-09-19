@@ -37,7 +37,8 @@ data class UserDto(
     @SerialName("firstName") val firstName: String,
     @SerialName("lastName") val lastName: String,
     val phone: String? = null,
-    val role: String,
+    val role: String = "ROLE_USER",
+    val roles: List<String> = emptyList(),
     @SerialName("avatarUrl") val avatarUrl: String? = null,
     @SerialName("isActive") val isActive: Boolean = true
 )
