@@ -75,9 +75,10 @@ class SessionDataStore(private val context: Context) {
 
     fun getUserInfo(): Flow<Triple<String, String, String>?> = context.dataStore.data.map { prefs ->
         val email = prefs[Keys.USER_EMAIL]
-        val name = prefs[Keys.USER_NAME]
-        val role = prefs[Keys.USER_ROLE]
-        if (email != null && name != null && role != null) Triple(email, name, role)
-        else null
+        if (!email.isNullOrBlank()) {
+            val name = prefs[Keys.USER_NAME] ?: ""
+            val role = prefs[Keys.USER_ROLE] ?: "CLIENTE"
+            Triple(email, name, role)
+        } else null
     }
 }

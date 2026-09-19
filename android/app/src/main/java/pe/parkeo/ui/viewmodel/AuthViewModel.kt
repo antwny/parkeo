@@ -15,6 +15,12 @@ data class AuthUiState(
     val isSuccess: Boolean = false
 )
 
+data class UserProfile(
+    val email: String = "",
+    val name: String = "",
+    val role: String = "CLIENTE"
+)
+
 class AuthViewModel(
     private val authRepository: AuthRepository,
     private val sessionDataStore: SessionDataStore
@@ -25,6 +31,18 @@ class AuthViewModel(
 
     val isLoggedIn: StateFlow<Boolean> = sessionDataStore.isLoggedIn
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val userProfile: StateFlow<UserProfile?> = sessionDataStore.getUserInfo()
+        .map { triple ->
+            triple?.let { (email, name, role) ->
+                UserProfile(
+                    email = email,
+                    name = name.ifBlank { "Usuario PARKeo" },
+                    role = role
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     fun login(email: String, password: String) {
         viewModelScope.launch {
@@ -57,5 +75,9 @@ class AuthViewModel(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun resetSuccess() {
+        _uiState.update { it.copy(isSuccess = false) }
     }
 }

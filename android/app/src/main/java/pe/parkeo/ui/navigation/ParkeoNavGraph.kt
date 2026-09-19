@@ -64,6 +64,7 @@ fun ParkeoNavGraph(
             LoginScreen(
                 viewModel = authViewModel,
                 onLoginSuccess = {
+                    authViewModel.resetSuccess()
                     navController.navigate(NavRoutes.HOME) {
                         popUpTo(NavRoutes.LOGIN) { inclusive = true }
                     }
@@ -77,6 +78,7 @@ fun ParkeoNavGraph(
             RegisterScreen(
                 viewModel = authViewModel,
                 onRegisterSuccess = {
+                    authViewModel.resetSuccess()
                     navController.navigate(NavRoutes.HOME) {
                         popUpTo(NavRoutes.REGISTER) { inclusive = true }
                         popUpTo(NavRoutes.LOGIN) { inclusive = true }

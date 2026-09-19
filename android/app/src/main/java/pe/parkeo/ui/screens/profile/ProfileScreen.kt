@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
@@ -24,7 +25,24 @@ fun ProfileScreen(
     onNavigateToReservations: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val userProfile by viewModel.userProfile.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    val roleUpper = (userProfile?.role ?: "").uppercase()
+    val isAdmin = roleUpper.contains("ADMIN")
+    val isOperator = roleUpper.contains("OPERAT")
+
+    val roleDisplayName = when {
+        isAdmin -> "Administrador"
+        isOperator -> "Operador"
+        else -> "Cliente"
+    }
+
+    val avatarIcon = when {
+        isAdmin -> Icons.Filled.AdminPanelSettings
+        isOperator -> Icons.Filled.Badge
+        else -> Icons.Filled.Person
+    }
 
     Scaffold(
         topBar = {
@@ -58,24 +76,71 @@ fun ProfileScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Filled.Person,
-                            null,
+                            imageVector = avatarIcon,
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(36.dp)
                         )
                     }
                     Spacer(Modifier.width(16.dp))
-                    Column {
-                        Text("Usuario PARKeo", style = MaterialTheme.typography.titleMedium)
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "cliente@parkeo.pe",
+                            text = userProfile?.name?.ifBlank { "Usuario PARKeo" } ?: "Usuario PARKeo",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = userProfile?.email ?: "",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(0.7f)
                         )
+                        SuggestionChip(
+                            onClick = {},
+                            label = {
+                                Text(
+                                    roleDisplayName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            },
+                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                labelColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            if (isAdmin) {
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Shield,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Acceso de Administrador",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
                         Text(
-                            "Rol: CLIENTE",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            "Tienes permisos para administrar usuarios, configurar estacionamientos y consultar métricas globales.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(0.8f)
                         )
                     }
                 }
