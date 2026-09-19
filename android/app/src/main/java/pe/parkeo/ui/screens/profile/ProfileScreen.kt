@@ -53,6 +53,7 @@ fun ProfileScreen(
 
     Scaffold(
         containerColor = extended.background,
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             ParkeoTopBar(
                 title = "Mi perfil",

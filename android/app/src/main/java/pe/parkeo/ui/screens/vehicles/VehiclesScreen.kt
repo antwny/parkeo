@@ -41,6 +41,7 @@ fun VehiclesScreen(
 
     Scaffold(
         containerColor = extended.background,
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             ParkeoTopBar(
                 title = "Mis vehículos",
@@ -49,7 +50,10 @@ fun VehiclesScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = {
+                    viewModel.clearMessages()
+                    showAddDialog = true
+                },
                 containerColor = extended.accent,
                 contentColor = extended.onAccent,
                 shape = RoundedCornerShape(12.dp)
@@ -82,7 +86,10 @@ fun VehiclesScreen(
                         subtitle = "Agrega tu primer vehículo para comenzar a reservar en nuestra red",
                         icon = Icons.Filled.DirectionsCar,
                         actionLabel = "Agregar vehículo",
-                        onAction = { showAddDialog = true }
+                        onAction = {
+                            viewModel.clearMessages()
+                            showAddDialog = true
+                        }
                     )
                 }
             }
@@ -108,7 +115,12 @@ fun VehiclesScreen(
         if (showAddDialog) {
             AddVehicleDialog(
                 vehicleTypes = uiState.vehicleTypes,
-                onDismiss = { showAddDialog = false },
+                isLoading = uiState.isLoading,
+                errorMessage = uiState.error,
+                onDismiss = {
+                    showAddDialog = false
+                    viewModel.clearMessages()
+                },
                 onAdd = { plate, brand, model, color, typeId ->
                     viewModel.addVehicle(plate, brand, model, color, typeId)
                 }
@@ -232,6 +244,8 @@ private fun LicensePlateBadge(plate: String) {
 @Composable
 private fun AddVehicleDialog(
     vehicleTypes: List<pe.parkeo.data.remote.dto.VehicleTypeDto>,
+    isLoading: Boolean,
+    errorMessage: String?,
     onDismiss: () -> Unit,
     onAdd: (String, String?, String?, String?, Long) -> Unit
 ) {
@@ -240,8 +254,16 @@ private fun AddVehicleDialog(
     var brand by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var color by remember { mutableStateOf("") }
-    var selectedTypeId by remember { mutableStateOf<Long?>(vehicleTypes.firstOrNull()?.id) }
+    var selectedTypeId by remember(vehicleTypes) {
+        mutableStateOf<Long?>(vehicleTypes.firstOrNull()?.id)
+    }
     var expanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(vehicleTypes) {
+        if (selectedTypeId == null && vehicleTypes.isNotEmpty()) {
+            selectedTypeId = vehicleTypes.first().id
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -258,6 +280,37 @@ private fun AddVehicleDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
+                errorMessage?.let { errorText ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = ParkeoCardShape,
+                        color = extended.signalRed.copy(alpha = 0.12f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            Dimens.borderHairline,
+                            extended.signalRed.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(Dimens.spacingSm),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ErrorOutline,
+                                contentDescription = null,
+                                tint = extended.signalRed,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(Dimens.spacingSm))
+                            Text(
+                                text = errorText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = extended.signalRed,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
                 ParkeoTextField(
                     value = plate,
                     onValueChange = { plate = it.uppercase() },
@@ -295,7 +348,8 @@ private fun AddVehicleDialog(
                     onExpandedChange = { expanded = it }
                 ) {
                     ParkeoTextField(
-                        value = vehicleTypes.firstOrNull { it.id == selectedTypeId }?.name ?: "Seleccionar tipo",
+                        value = vehicleTypes.firstOrNull { it.id == selectedTypeId }?.name
+                            ?: if (vehicleTypes.isEmpty()) "Cargando tipos..." else "Seleccionar tipo",
                         onValueChange = {},
                         readOnly = true,
                         label = "Tipo de vehículo",
@@ -324,6 +378,7 @@ private fun AddVehicleDialog(
         confirmButton = {
             ParkeoButton(
                 text = "Guardar",
+                isLoading = isLoading,
                 onClick = {
                     selectedTypeId?.let { typeId ->
                         onAdd(
@@ -335,7 +390,7 @@ private fun AddVehicleDialog(
                         )
                     }
                 },
-                enabled = plate.isNotBlank() && selectedTypeId != null,
+                enabled = plate.isNotBlank() && selectedTypeId != null && !isLoading,
                 style = ParkeoButtonStyle.Primary,
                 modifier = Modifier.height(Dimens.buttonHeightDefault)
             )

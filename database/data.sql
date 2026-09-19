@@ -76,19 +76,19 @@ ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
 -- =============================================================================
 -- VEHICLES
 -- =============================================================================
-INSERT INTO vehicles (id, user_id, vehicle_type_id, plate, brand, model, color, year) VALUES
+INSERT INTO vehicles (id, user_id, vehicle_type_id, plate, license_plate, brand, model, color, year) VALUES
 -- Vehículos de María (cliente id=3)
-(1,  3, 1, 'ABC-123', 'Toyota',    'Corolla',    'Blanco',  2021),
-(2,  3, 2, 'MO-456',  'Honda',     'CB190R',     'Negro',   2022),
+(1,  3, 1, 'ABC-123', 'ABC-123', 'Toyota',    'Corolla',    'Blanco',  2021),
+(2,  3, 2, 'MO-456',  'MO-456',  'Honda',     'CB190R',     'Negro',   2022),
 -- Vehículos de Juan (cliente id=4)
-(3,  4, 1, 'DEF-789', 'Hyundai',   'Tucson',     'Plata',   2020),
-(4,  4, 3, 'GHI-012', 'Ford',      'Ranger',     'Rojo',    2019),
+(3,  4, 1, 'DEF-789', 'DEF-789', 'Hyundai',   'Tucson',     'Plata',   2020),
+(4,  4, 3, 'GHI-012', 'GHI-012', 'Ford',      'Ranger',     'Rojo',    2019),
 -- Vehículos de Sofía (cliente id=5)
-(5,  5, 1, 'JKL-345', 'Kia',       'Sportage',   'Azul',    2023),
-(6,  5, 2, 'MO-678',  'Yamaha',    'FZ25',       'Negro',   2021),
+(5,  5, 1, 'JKL-345', 'JKL-345', 'Kia',       'Sportage',   'Gris',    2023),
+(6,  5, 2, 'MO-789',  'MO-789',  'Yamaha',    'FZ25',       'Azul',    2021),
 -- Vehículos de Roberto (cliente id=6)
-(7,  6, 1, 'MNO-901', 'Nissan',    'Sentra',     'Gris',    2020),
-(8,  6, 3, 'PQR-234', 'Toyota',    'Hilux',      'Blanco',  2022)
+(7,  6, 1, 'MNO-901', 'MNO-901', 'Nissan',    'Sentra',     'Gris',    2020),
+(8,  6, 3, 'PQR-234', 'PQR-234', 'Toyota',    'Hilux',      'Blanco',  2022)
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
 
 -- =============================================================================

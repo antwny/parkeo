@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import pe.parkeo.ui.components.ParkeoButton
 import pe.parkeo.ui.components.ParkeoButtonStyle
 import pe.parkeo.ui.components.ParkeoTextField
@@ -42,11 +43,17 @@ fun RegisterScreen(
         if (uiState.isSuccess) onRegisterSuccess()
     }
 
+    val hasMinLength = password.length >= 8
+    val hasUpperCase = password.any { it.isUpperCase() }
+    val hasLowerCase = password.any { it.isLowerCase() }
+    val hasDigit = password.any { it.isDigit() }
+    val isPasswordStrong = hasMinLength && hasUpperCase && hasLowerCase && hasDigit
+
     val passwordsMatch = confirmPassword.isBlank() || password == confirmPassword
     val isValid = firstName.isNotBlank() &&
             lastName.isNotBlank() &&
-            android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() &&
-            password.length >= 8 &&
+            android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() &&
+            isPasswordStrong &&
             password == confirmPassword
 
     Scaffold(
@@ -135,6 +142,28 @@ fun RegisterScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(Modifier.height(Dimens.spacingSm))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Dimens.spacingXs),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                PasswordRequirementRow(
+                    label = "Mínimo 8 caracteres",
+                    isMet = hasMinLength
+                )
+                PasswordRequirementRow(
+                    label = "Al menos una mayúscula y una minúscula",
+                    isMet = hasUpperCase && hasLowerCase
+                )
+                PasswordRequirementRow(
+                    label = "Al menos un número (0-9)",
+                    isMet = hasDigit
+                )
+            }
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
@@ -228,3 +257,29 @@ fun RegisterScreen(
         }
     }
 }
+
+@Composable
+private fun PasswordRequirementRow(
+    label: String,
+    isMet: Boolean
+) {
+    val extended = ParkeoTheme.colors
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = if (isMet) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+            contentDescription = null,
+            modifier = Modifier.size(13.dp),
+            tint = if (isMet) extended.signalGreen else extended.textTertiary
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            fontSize = 11.sp,
+            color = if (isMet) extended.textSecondary else extended.textTertiary
+        )
+    }
+}
+

@@ -37,6 +37,7 @@ fun ParkeoBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .background(extended.surface1)
+            .navigationBarsPadding()
     ) {
         HorizontalDivider(
             color = extended.borderSubtle,
@@ -46,8 +47,7 @@ fun ParkeoBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
-                .navigationBarsPadding(),
+                .height(58.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -89,13 +89,14 @@ fun ParkeoBottomBar(
                         )
                     }
 
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.height(2.dp))
 
                     Text(
                         text = item.title,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
                         color = itemColor,
                         maxLines = 1
                     )

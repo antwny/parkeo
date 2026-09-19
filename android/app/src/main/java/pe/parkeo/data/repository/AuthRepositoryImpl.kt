@@ -26,7 +26,11 @@ class AuthRepositoryImpl(
                 )
                 Result.Success(authData)
             } else {
-                Result.Error(response.body()?.message ?: "Error de autenticación", response.code())
+                val errorMsg = pe.parkeo.util.NetworkErrorParser.parseErrorMessage(
+                    response.errorBody(),
+                    response.body()?.message ?: "Error de autenticación"
+                )
+                Result.Error(errorMsg, response.code())
             }
         } catch (e: Exception) {
             Result.Error(e.message ?: "Error de conexión")
@@ -56,7 +60,11 @@ class AuthRepositoryImpl(
                 )
                 Result.Success(authData)
             } else {
-                Result.Error(response.body()?.message ?: "Error al registrarse", response.code())
+                val errorMsg = pe.parkeo.util.NetworkErrorParser.parseErrorMessage(
+                    response.errorBody(),
+                    response.body()?.message ?: "Error al registrarse"
+                )
+                Result.Error(errorMsg, response.code())
             }
         } catch (e: Exception) {
             Result.Error(e.message ?: "Error de conexión")

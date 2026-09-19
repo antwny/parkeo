@@ -38,6 +38,7 @@ fun AdminDashboardScreen(
 
     Scaffold(
         containerColor = extended.background,
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             ParkeoTopBar(
                 title = "Panel de Administración",

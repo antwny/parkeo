@@ -53,6 +53,7 @@ fun AdminParkingLotsScreen(
 
     Scaffold(
         containerColor = extended.background,
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             ParkeoTopBar(

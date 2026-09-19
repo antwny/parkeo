@@ -2,11 +2,13 @@ package pe.parkeo.ui.screens.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Scaffold
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -95,6 +97,7 @@ fun MainScreen(
 
     Scaffold(
         containerColor = extended.background,
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             ParkeoBottomBar(
                 items = items,

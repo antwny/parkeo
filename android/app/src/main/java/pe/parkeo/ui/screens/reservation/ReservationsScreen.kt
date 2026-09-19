@@ -39,6 +39,7 @@ fun ReservationsScreen(
 
     Scaffold(
         containerColor = extended.background,
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             ParkeoTopBar(
                 title = "Mis reservas",

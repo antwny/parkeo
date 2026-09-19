@@ -33,7 +33,13 @@ class VehicleRepositoryImpl(
             )
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.Success(response.body()!!.data!!)
-            } else Result.Error(response.body()?.message ?: "Error al crear vehículo")
+            } else {
+                val errorMsg = pe.parkeo.util.NetworkErrorParser.parseErrorMessage(
+                    response.errorBody(),
+                    response.body()?.message ?: "Error al crear vehículo"
+                )
+                Result.Error(errorMsg)
+            }
         } catch (e: Exception) {
             Result.Error(e.message ?: "Error de conexión")
         }
@@ -53,7 +59,13 @@ class VehicleRepositoryImpl(
             )
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.Success(response.body()!!.data!!)
-            } else Result.Error(response.body()?.message ?: "Error al actualizar vehículo")
+            } else {
+                val errorMsg = pe.parkeo.util.NetworkErrorParser.parseErrorMessage(
+                    response.errorBody(),
+                    response.body()?.message ?: "Error al actualizar vehículo"
+                )
+                Result.Error(errorMsg)
+            }
         } catch (e: Exception) {
             Result.Error(e.message ?: "Error de conexión")
         }
