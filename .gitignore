@@ -1,0 +1,156 @@
+# =====================================
+# PARKEO — .gitignore
+# =====================================
+
+# =====================================
+# SECRETS & CREDENTIALS (NEVER COMMIT)
+# =====================================
+.env
+.env.*
+*.env
+local.properties
+secrets.properties
+keystore.properties
+google-services.json
+service-account.json
+*.keystore
+*.jks
+*.p12
+
+# =====================================
+# ANDROID / GRADLE
+# =====================================
+*.iml
+.gradle
+/local.properties
+android/.gradle/
+android/local.properties
+android/build/
+android/*/build/
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/*.apk
+android/*.aab
+android/*.ap_
+android/*.dex
+android/app/release/
+android/app/debug/
+android/app/google-services.json
+
+# Android Studio
+.idea/
+*.idea
+android/.idea/
+*.swp
+android/.DS_Store
+android/Thumbs.db
+
+# Gradle
+**/.gradle/
+**/build/
+
+# ProGuard / R8
+# (Keep proguard-rules.pro in version control)
+*.class
+*.kotlin_module
+
+# APK/AAB files
+*.apk
+*.aab
+*.ap_
+
+
+
+# Navigation Safe Args
+android/app/src/main/java/**/R.java
+
+# =====================================
+# BACKEND / SPRING BOOT / JAVA / MAVEN
+# =====================================
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+HELP.md
+backend/.idea/
+backend/*.iml
+
+# Spring Boot
+backend/src/main/resources/application-dev.properties
+backend/src/main/resources/application-prod.properties
+backend/src/main/resources/application-local.properties
+
+# Maven
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+
+# =====================================
+# DATABASE
+# =====================================
+database/*.dump
+database/*.backup
+database/*.bak
+database/data-sensitive/
+
+# =====================================
+# LOGS
+# =====================================
+*.log
+logs/
+backend/logs/
+backend/*.log
+
+# =====================================
+# OS FILES
+# =====================================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.directory
+
+# =====================================
+# EDITOR FILES
+# =====================================
+.vscode/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+nbproject/
+.nb-gradle/
+.classpath
+.project
+.settings/
+bin/
+
+# =====================================
+# DOCKER
+# =====================================
+.docker/
+docker-compose.override.yml
+
+# =====================================
+# NODE (tooling)
+# =====================================
+node_modules/
+npm-debug.log
+yarn-error.log
+.npm
+.yarn
+
+# =====================================
+# CERTIFICATES & KEYS
+# =====================================
+*.pem
+*.key
+*.cert
+*.crt
+*.p8

@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # ─────────────────────────────────────
+  # MySQL 8.0
+  # ─────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: parkeo-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password_change_me}
+      MYSQL_DATABASE: parkeo_db
+      MYSQL_USER: parkeo_user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-parkeo_password_change_me}
+    ports:
+      - "3307:3306"
+    volumes:
+      - parkeo_mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/data.sql:/docker-entrypoint-initdb.d/02-data.sql
+    networks:
+      - parkeo-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password_change_me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ─────────────────────────────────────
+  # Spring Boot Backend
+  # ─────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: parkeo-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/parkeo_db?useSSL=false&serverTimezone=America/Lima&allowPublicKeyRetrieval=true
+      DB_USERNAME: parkeo_user
+      DB_PASSWORD: ${MYSQL_PASSWORD:-parkeo_password_change_me}
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production-min-256-bits}
+      JWT_EXPIRATION: 86400000
+      JWT_REFRESH_EXPIRATION: 604800000
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "8080:8080"
+    networks:
+      - parkeo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  parkeo-network:
+    driver: bridge
+
+volumes:
+  parkeo_mysql_data:
+    driver: local
