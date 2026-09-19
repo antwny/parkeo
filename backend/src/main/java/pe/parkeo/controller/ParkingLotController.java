@@ -81,7 +81,7 @@ public class ParkingLotController {
         return ResponseEntity.ok(ApiResponse.ok(tariffRepository.findByParkingLotIdAndIsActiveTrue(id)));
     }
 
-    @GetMapping("/{id}/availability")
+    @GetMapping(value = {"/{id}/availability", "/{id}/spaces/available"})
     @Operation(summary = "Obtener espacios disponibles del estacionamiento")
     public ResponseEntity<ApiResponse<List<ParkingSpaceResponse>>> getAvailability(
             @PathVariable Long id,

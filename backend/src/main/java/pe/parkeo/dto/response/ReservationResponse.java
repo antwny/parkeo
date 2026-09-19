@@ -27,4 +27,8 @@ public class ReservationResponse {
     private Long vehicleId;
     private String vehicleLicensePlate;
     private LocalDateTime createdAt;
+
+    public BigDecimal getTotalPrice() {
+        return totalAmount;
+    }
 }

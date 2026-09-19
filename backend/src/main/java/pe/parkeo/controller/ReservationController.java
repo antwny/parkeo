@@ -38,7 +38,7 @@ public class ReservationController {
     @Operation(summary = "Obtener mis reservas")
     public ResponseEntity<ApiResponse<Page<ReservationResponse>>> getMyReservations(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam(required = false) ReservationStatus status,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Long userId = resolveUserId(userDetails);

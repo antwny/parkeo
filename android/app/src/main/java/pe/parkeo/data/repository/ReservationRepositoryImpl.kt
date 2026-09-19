@@ -13,7 +13,7 @@ class ReservationRepositoryImpl(
         return try {
             val response = reservationApi.getMyReservations(status)
             if (response.isSuccessful && response.body()?.success == true) {
-                Result.Success(response.body()!!.data ?: emptyList())
+                Result.Success(response.body()!!.data?.content ?: emptyList())
             } else Result.Error(response.body()?.message ?: "Error")
         } catch (e: Exception) {
             Result.Error(e.message ?: "Error de conexión")

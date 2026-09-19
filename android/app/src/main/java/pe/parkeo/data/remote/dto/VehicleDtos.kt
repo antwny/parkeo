@@ -5,19 +5,31 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class VehicleDto(
-    val id: Long,
-    @SerialName("licensePlate") val licensePlate: String,
+    val id: Long = 0,
+    @SerialName("licensePlate") val licensePlate: String = "",
     val brand: String? = null,
     val model: String? = null,
     val color: String? = null,
-    @SerialName("vehicleType") val vehicleType: VehicleTypeDto
-)
+    val year: Int? = null,
+    @SerialName("isActive") val isActive: Boolean = true,
+    @SerialName("vehicleTypeId") val vehicleTypeId: Long? = null,
+    @SerialName("vehicleTypeName") val vehicleTypeName: String? = null,
+    @SerialName("vehicleType") val vehicleTypeObj: VehicleTypeDto? = null
+) {
+    val vehicleType: VehicleTypeDto
+        get() = vehicleTypeObj ?: VehicleTypeDto(
+            id = vehicleTypeId ?: 0L,
+            name = vehicleTypeName ?: "Vehículo"
+        )
+}
 
 @Serializable
 data class VehicleTypeDto(
-    val id: Long,
-    val name: String,
-    val icon: String? = null
+    val id: Long = 0,
+    val name: String = "",
+    val description: String? = null,
+    val icon: String? = null,
+    @SerialName("isActive") val isActive: Boolean = true
 )
 
 @Serializable

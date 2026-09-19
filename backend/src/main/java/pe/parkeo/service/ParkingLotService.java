@@ -108,8 +108,12 @@ public class ParkingLotService {
                         .build())
                 .collect(Collectors.toList());
 
-        List<String> services = lot.getServices().stream()
-                .map(pe.parkeo.entity.ParkingService::getName)
+        List<ParkingLotDetailResponse.ServiceInfo> services = lot.getServices().stream()
+                .map(s -> ParkingLotDetailResponse.ServiceInfo.builder()
+                        .id(s.getId())
+                        .name(s.getName())
+                        .icon(s.getIcon())
+                        .build())
                 .collect(Collectors.toList());
 
         return ParkingLotDetailResponse.builder()

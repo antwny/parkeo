@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS vehicle_types (
     name        VARCHAR(50)      NOT NULL,
     label       VARCHAR(100)     NOT NULL,
     description VARCHAR(255)     NULL,
+    is_active   BOOLEAN          NOT NULL DEFAULT TRUE,
     PRIMARY KEY (id),
     UNIQUE KEY uq_vehicle_types_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

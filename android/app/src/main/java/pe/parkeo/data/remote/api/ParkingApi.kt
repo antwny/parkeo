@@ -9,7 +9,7 @@ interface ParkingApi {
     suspend fun getParkingLots(
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 20
-    ): Response<ApiResponseDto<List<ParkingLotDto>>>
+    ): Response<ApiResponseDto<PageDto<ParkingLotDto>>>
 
     @GET("api/parking/{id}")
     suspend fun getParkingLotDetail(@Path("id") id: Long): Response<ApiResponseDto<ParkingLotDetailDto>>
@@ -23,20 +23,20 @@ interface ParkingApi {
 
     @GET("api/parking/search")
     suspend fun searchParkingLots(
-        @Query("q") query: String
-    ): Response<ApiResponseDto<List<ParkingLotDto>>>
+        @Query("q") query: String,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20
+    ): Response<ApiResponseDto<PageDto<ParkingLotDto>>>
 
     @GET("api/parking/{id}/availability")
     suspend fun getAvailability(
         @Path("id") id: Long,
-        @Query("date") date: String? = null
-    ): Response<ApiResponseDto<AvailabilityDto>>
+        @Query("vehicleTypeId") vehicleTypeId: Long? = null
+    ): Response<ApiResponseDto<List<ParkingSpaceDto>>>
 
     @GET("api/parking/{id}/spaces/available")
     suspend fun getAvailableSpaces(
         @Path("id") id: Long,
-        @Query("startTime") startTime: String,
-        @Query("endTime") endTime: String,
         @Query("vehicleTypeId") vehicleTypeId: Long? = null
     ): Response<ApiResponseDto<List<ParkingSpaceDto>>>
 }

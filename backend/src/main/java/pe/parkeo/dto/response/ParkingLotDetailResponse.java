@@ -31,8 +31,20 @@ public class ParkingLotDetailResponse {
     private Long totalRatings;
     private List<ScheduleInfo> schedules;
     private List<TariffInfo> tariffs;
-    private List<String> services;
+    private List<ServiceInfo> services;
     private LocalDateTime createdAt;
+
+    public Integer getTotalCapacity() {
+        return totalSpaces;
+    }
+
+    public Double getRating() {
+        return averageRating;
+    }
+
+    public Long getRatingCount() {
+        return totalRatings != null ? totalRatings : 0L;
+    }
 
     @Getter
     @Setter
@@ -44,6 +56,10 @@ public class ParkingLotDetailResponse {
         private String openTime;
         private String closeTime;
         private Boolean isClosed;
+
+        public Boolean getIsOpen() {
+            return isClosed != null ? !isClosed : true;
+        }
     }
 
     @Getter
@@ -58,5 +74,20 @@ public class ParkingLotDetailResponse {
         private String vehicleTypeName;
         private Integer minHours;
         private Integer maxHours;
+
+        public String getVehicleType() {
+            return vehicleTypeName;
+        }
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ServiceInfo {
+        private Long id;
+        private String name;
+        private String icon;
     }
 }

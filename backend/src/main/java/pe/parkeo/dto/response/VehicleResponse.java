@@ -21,4 +21,12 @@ public class VehicleResponse {
     private Integer year;
     private Boolean isActive;
     private LocalDateTime createdAt;
+
+    public java.util.Map<String, Object> getVehicleType() {
+        if (vehicleTypeId == null && vehicleTypeName == null) return null;
+        return java.util.Map.of(
+            "id", vehicleTypeId != null ? vehicleTypeId : 0L,
+            "name", vehicleTypeName != null ? vehicleTypeName : ""
+        );
+    }
 }

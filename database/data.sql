@@ -21,13 +21,13 @@ ON DUPLICATE KEY UPDATE label = VALUES(label);
 -- =============================================================================
 -- VEHICLE TYPES
 -- =============================================================================
-INSERT INTO vehicle_types (id, name, label, description) VALUES
-(1, 'AUTOMOVIL',   'Automóvil',   'Vehículo de pasajeros estándar'),
-(2, 'MOTO',        'Motocicleta', 'Motocicleta o scooter'),
-(3, 'CAMIONETA',   'Camioneta',   'SUV, pick-up o camioneta'),
-(4, 'CAMION',      'Camión',      'Vehículo de carga pesada'),
-(5, 'BICICLETA',   'Bicicleta',   'Bicicleta convencional o eléctrica')
-ON DUPLICATE KEY UPDATE label = VALUES(label);
+INSERT INTO vehicle_types (id, name, label, description, is_active) VALUES
+(1, 'AUTOMOVIL',   'Automóvil',   'Vehículo de pasajeros estándar',      TRUE),
+(2, 'MOTO',        'Motocicleta', 'Motocicleta o scooter',               TRUE),
+(3, 'CAMIONETA',   'Camioneta',   'SUV, pick-up o camioneta',            TRUE),
+(4, 'CAMION',      'Camión',      'Vehículo de carga pesada',            TRUE),
+(5, 'BICICLETA',   'Bicicleta',   'Bicicleta convencional o eléctrica',  TRUE)
+ON DUPLICATE KEY UPDATE label = VALUES(label), is_active = VALUES(is_active);
 
 -- =============================================================================
 -- PARKING SERVICES (catálogo)

@@ -25,4 +25,16 @@ public class ParkingLotResponse {
     private Double distanceKm;       // populated when doing nearby search
     private Double averageRating;
     private LocalDateTime createdAt;
+
+    public Integer getTotalCapacity() {
+        return totalSpaces;
+    }
+
+    public Double getRating() {
+        return averageRating;
+    }
+
+    public Double getDistance() {
+        return distanceKm;
+    }
 }

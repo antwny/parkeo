@@ -7,8 +7,10 @@ import retrofit2.http.*
 interface ReservationApi {
     @GET("api/reservations")
     suspend fun getMyReservations(
-        @Query("status") status: String? = null
-    ): Response<ApiResponseDto<List<ReservationDto>>>
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20
+    ): Response<ApiResponseDto<PageDto<ReservationDto>>>
 
     @GET("api/reservations/{id}")
     suspend fun getReservationDetail(@Path("id") id: Long): Response<ApiResponseDto<ReservationDto>>

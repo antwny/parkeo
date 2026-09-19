@@ -12,7 +12,7 @@ class ParkingRepositoryImpl(
     override suspend fun getParkingLots(): Result<List<ParkingLotDto>> = safeApiCall {
         val response = parkingApi.getParkingLots()
         if (response.isSuccessful && response.body()?.success == true) {
-            response.body()!!.data ?: emptyList()
+            response.body()!!.data?.content ?: emptyList()
         } else throw Exception(response.body()?.message ?: "Error al obtener estacionamientos")
     }
 
@@ -33,14 +33,22 @@ class ParkingRepositoryImpl(
     override suspend fun searchParkingLots(query: String): Result<List<ParkingLotDto>> = safeApiCall {
         val response = parkingApi.searchParkingLots(query)
         if (response.isSuccessful && response.body()?.success == true) {
-            response.body()!!.data ?: emptyList()
+            response.body()!!.data?.content ?: emptyList()
         } else throw Exception(response.body()?.message ?: "Error en búsqueda")
     }
 
     override suspend fun getAvailability(id: Long, date: String?): Result<AvailabilityDto> = safeApiCall {
-        val response = parkingApi.getAvailability(id, date)
+        val response = parkingApi.getAvailability(id)
         if (response.isSuccessful && response.body()?.success == true) {
-            response.body()!!.data ?: throw Exception("Disponibilidad no disponible")
+            val spaces = response.body()!!.data ?: emptyList()
+            val available = spaces.count { it.isAvailable }
+            AvailabilityDto(
+                parkingLotId = id,
+                totalCapacity = spaces.size,
+                availableSpaces = available,
+                occupiedSpaces = spaces.size - available,
+                reservedSpaces = 0
+            )
         } else throw Exception(response.body()?.message ?: "Error")
     }
 
@@ -50,7 +58,7 @@ class ParkingRepositoryImpl(
         endTime: String,
         vehicleTypeId: Long?
     ): Result<List<ParkingSpaceDto>> = safeApiCall {
-        val response = parkingApi.getAvailableSpaces(id, startTime, endTime, vehicleTypeId)
+        val response = parkingApi.getAvailableSpaces(id, vehicleTypeId)
         if (response.isSuccessful && response.body()?.success == true) {
             response.body()!!.data ?: emptyList()
         } else throw Exception(response.body()?.message ?: "Error")

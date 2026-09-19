@@ -21,7 +21,9 @@ import pe.parkeo.repository.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -108,6 +110,32 @@ public class ReservationService {
                 reservation.getConfirmationCode(), userId, space.getId());
 
         return mapToResponse(reservation);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReservationResponse> getMyReservations(Long userId, String statusParam, Pageable pageable) {
+        if (statusParam == null || statusParam.isBlank()) {
+            return reservationRepository.findByUserId(userId, pageable).map(this::mapToResponse);
+        }
+
+        List<ReservationStatus> statuses = Arrays.stream(statusParam.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(s -> {
+                    try {
+                        return ReservationStatus.valueOf(s.toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (statuses.isEmpty()) {
+            return reservationRepository.findByUserId(userId, pageable).map(this::mapToResponse);
+        }
+
+        return reservationRepository.findByUserIdAndStatusIn(userId, statuses, pageable).map(this::mapToResponse);
     }
 
     @Transactional(readOnly = true)
