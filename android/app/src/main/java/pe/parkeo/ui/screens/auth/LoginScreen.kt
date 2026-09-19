@@ -143,6 +143,45 @@ fun LoginScreen(
             TextButton(onClick = onNavigateToRegister) {
                 Text("¿No tienes cuenta? Regístrate")
             }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Acceso rápido para pruebas:",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AssistChip(
+                    onClick = {
+                        email = "admin@parkeo.pe"
+                        password = "Password123!"
+                        viewModel.login("admin@parkeo.pe", "Password123!")
+                    },
+                    label = { Text("Admin") },
+                    leadingIcon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
+                AssistChip(
+                    onClick = {
+                        email = "operador@parkeo.pe"
+                        password = "Password123!"
+                        viewModel.login("operador@parkeo.pe", "Password123!")
+                    },
+                    label = { Text("Operador") },
+                    leadingIcon = { Icon(Icons.Filled.Badge, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
+                AssistChip(
+                    onClick = {
+                        email = "cliente@parkeo.pe"
+                        password = "Password123!"
+                        viewModel.login("cliente@parkeo.pe", "Password123!")
+                    },
+                    label = { Text("Cliente") },
+                    leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
+            }
         }
     }
 }

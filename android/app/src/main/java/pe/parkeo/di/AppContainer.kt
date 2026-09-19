@@ -21,6 +21,8 @@ interface AppContainer {
     val parkingRepository: ParkingRepository
     val vehicleRepository: VehicleRepository
     val reservationRepository: ReservationRepository
+    val adminRepository: AdminRepository
+    val operatorRepository: OperatorRepository
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -78,6 +80,14 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         retrofit.create(ReservationApi::class.java)
     }
 
+    private val adminApi: AdminApi by lazy {
+        retrofit.create(AdminApi::class.java)
+    }
+
+    private val operatorApi: OperatorApi by lazy {
+        retrofit.create(OperatorApi::class.java)
+    }
+
     override val authRepository: AuthRepository by lazy {
         AuthRepositoryImpl(authApi, sessionDataStore)
     }
@@ -92,5 +102,13 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val reservationRepository: ReservationRepository by lazy {
         ReservationRepositoryImpl(reservationApi)
+    }
+
+    override val adminRepository: AdminRepository by lazy {
+        AdminRepositoryImpl(adminApi)
+    }
+
+    override val operatorRepository: OperatorRepository by lazy {
+        OperatorRepositoryImpl(operatorApi)
     }
 }

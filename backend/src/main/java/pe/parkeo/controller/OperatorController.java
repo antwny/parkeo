@@ -47,6 +47,12 @@ public class OperatorController {
     @Operation(summary = "Obtener estacionamientos asignados al operador")
     public ResponseEntity<ApiResponse<List<ParkingLotResponse>>> getMyParkingLots(
             @AuthenticationPrincipal UserDetails userDetails) {
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (isAdmin) {
+            return ResponseEntity.ok(ApiResponse.ok(
+                    parkingLotService.getAllActive(PageRequest.of(0, 100)).getContent()));
+        }
         Long operatorId = resolveUserId(userDetails);
         return ResponseEntity.ok(ApiResponse.ok(parkingLotService.getByOperator(operatorId)));
     }

@@ -64,46 +64,27 @@ public class AdminController {
 
     @GetMapping("/parking-lots")
     @Operation(summary = "Listar todos los estacionamientos (incluye inactivos)")
-    public ResponseEntity<ApiResponse<Page<ParkingLot>>> getAllParkingLots(
+    public ResponseEntity<ApiResponse<Page<ParkingLotResponse>>> getAllParkingLots(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(ApiResponse.ok(parkingLotRepository.findAll(pageable)));
+        return ResponseEntity.ok(ApiResponse.ok(parkingLotService.getAllForAdmin(pageable)));
     }
 
-    @PostMapping("/parking-lots")
-    @Operation(summary = "Crear nuevo estacionamiento")
-    public ResponseEntity<ApiResponse<ParkingLot>> createParkingLot(
-            @RequestBody ParkingLot parkingLot) {
-        ParkingLot saved = parkingLotRepository.save(parkingLot);
-        return ResponseEntity.ok(ApiResponse.ok("Estacionamiento creado", saved));
-    }
-
-    @PutMapping("/parking-lots/{id}")
-    @Operation(summary = "Actualizar estacionamiento")
-    public ResponseEntity<ApiResponse<ParkingLot>> updateParkingLot(
+    @PutMapping("/parking-lots/{id}/status")
+    @Operation(summary = "Cambiar estado de estacionamiento (abierto/activo)")
+    public ResponseEntity<ApiResponse<ParkingLotResponse>> setParkingLotStatus(
             @PathVariable Long id,
-            @RequestBody ParkingLot updates) {
-        ParkingLot lot = parkingLotRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", id));
-        if (updates.getName() != null) lot.setName(updates.getName());
-        if (updates.getDescription() != null) lot.setDescription(updates.getDescription());
-        if (updates.getAddress() != null) lot.setAddress(updates.getAddress());
-        if (updates.getDistrict() != null) lot.setDistrict(updates.getDistrict());
-        if (updates.getCity() != null) lot.setCity(updates.getCity());
-        if (updates.getPhone() != null) lot.setPhone(updates.getPhone());
-        if (updates.getEmail() != null) lot.setEmail(updates.getEmail());
-        if (updates.getIsOpen() != null) lot.setIsOpen(updates.getIsOpen());
-        return ResponseEntity.ok(ApiResponse.ok("Estacionamiento actualizado", parkingLotRepository.save(lot)));
+            @RequestBody Map<String, Boolean> body) {
+        Boolean isOpen = body.get("isOpen");
+        Boolean isActive = body.get("isActive");
+        return ResponseEntity.ok(ApiResponse.ok(parkingLotService.updateLotStatus(id, isOpen, isActive)));
     }
 
     @DeleteMapping("/parking-lots/{id}")
     @Operation(summary = "Desactivar estacionamiento (soft delete)")
     public ResponseEntity<ApiResponse<Void>> deactivateParkingLot(@PathVariable Long id) {
-        ParkingLot lot = parkingLotRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", id));
-        lot.setIsActive(false);
-        parkingLotRepository.save(lot);
+        parkingLotService.updateLotStatus(id, null, false);
         return ResponseEntity.ok(ApiResponse.ok("Estacionamiento desactivado", null));
     }
 

@@ -11,6 +11,7 @@ import androidx.navigation.navArgument
 import pe.parkeo.ui.screens.auth.LoginScreen
 import pe.parkeo.ui.screens.auth.RegisterScreen
 import pe.parkeo.ui.screens.home.HomeScreen
+import pe.parkeo.ui.screens.main.MainScreen
 import pe.parkeo.ui.screens.onboarding.OnboardingScreen
 import pe.parkeo.ui.screens.parking.ParkingDetailScreen
 import pe.parkeo.ui.screens.profile.ProfileScreen
@@ -89,14 +90,31 @@ fun ParkeoNavGraph(
         }
 
         composable(NavRoutes.HOME) {
+            val authViewModel: AuthViewModel = viewModel(factory = viewModelFactory)
             val homeViewModel: HomeViewModel = viewModel(factory = viewModelFactory)
-            HomeScreen(
-                viewModel = homeViewModel,
+            val adminViewModel: AdminViewModel = viewModel(factory = viewModelFactory)
+            val operatorViewModel: OperatorViewModel = viewModel(factory = viewModelFactory)
+            val reservationViewModel: ReservationViewModel = viewModel(factory = viewModelFactory)
+            val vehicleViewModel: VehicleViewModel = viewModel(factory = viewModelFactory)
+
+            MainScreen(
+                authViewModel = authViewModel,
+                homeViewModel = homeViewModel,
+                adminViewModel = adminViewModel,
+                operatorViewModel = operatorViewModel,
+                reservationViewModel = reservationViewModel,
+                vehicleViewModel = vehicleViewModel,
                 onNavigateToParkingDetail = { id ->
                     navController.navigate(NavRoutes.parkingDetail(id))
                 },
-                onNavigateToProfile = { navController.navigate(NavRoutes.PROFILE) },
-                onNavigateToReservations = { navController.navigate(NavRoutes.RESERVATIONS) }
+                onNavigateToReservationCreate = { id ->
+                    navController.navigate(NavRoutes.reservationCreate(id))
+                },
+                onLogout = {
+                    navController.navigate(NavRoutes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 

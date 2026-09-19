@@ -32,6 +32,12 @@ class ParkeoViewModelFactory(
             modelClass.isAssignableFrom(ReservationViewModel::class.java) -> {
                 ReservationViewModel(appContainer.reservationRepository) as T
             }
+            modelClass.isAssignableFrom(AdminViewModel::class.java) -> {
+                AdminViewModel(appContainer.adminRepository) as T
+            }
+            modelClass.isAssignableFrom(OperatorViewModel::class.java) -> {
+                OperatorViewModel(appContainer.operatorRepository) as T
+            }
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }

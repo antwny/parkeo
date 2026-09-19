@@ -22,6 +22,7 @@ public class ParkingLotResponse {
     private Integer availableSpaces;
     private String imageUrl;
     private Boolean isOpen;
+    private Boolean isActive;
     private Double distanceKm;       // populated when doing nearby search
     private Double averageRating;
     private LocalDateTime createdAt;

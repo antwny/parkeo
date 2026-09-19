@@ -65,6 +65,21 @@ public class ParkingLotService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public Page<ParkingLotResponse> getAllForAdmin(Pageable pageable) {
+        return parkingLotRepository.findAll(pageable)
+                .map(this::mapToResponse);
+    }
+
+    @Transactional
+    public ParkingLotResponse updateLotStatus(Long id, Boolean isOpen, Boolean isActive) {
+        ParkingLot lot = parkingLotRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", id));
+        if (isOpen != null) lot.setIsOpen(isOpen);
+        if (isActive != null) lot.setIsActive(isActive);
+        return mapToResponse(parkingLotRepository.save(lot));
+    }
+
     // ─── Mapping ──────────────────────────────────────────────────────────────
 
     private ParkingLotResponse mapToResponse(ParkingLot lot) {
@@ -80,6 +95,7 @@ public class ParkingLotService {
                 .availableSpaces(lot.getAvailableSpaces())
                 .imageUrl(lot.getImageUrl())
                 .isOpen(lot.getIsOpen())
+                .isActive(lot.getIsActive())
                 .createdAt(lot.getCreatedAt())
                 .build();
     }
