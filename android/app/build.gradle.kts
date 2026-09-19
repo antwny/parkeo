@@ -27,7 +27,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY") ?: ""
-        buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
+        val backendUrl = localProperties.getProperty("BACKEND_URL") ?: "http://127.0.0.1:8080/"
+        buildConfigField("String", "BASE_URL", "\"$backendUrl\"")
     }
 
     buildTypes {
