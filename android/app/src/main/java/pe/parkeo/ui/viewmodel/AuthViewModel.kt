@@ -37,7 +37,7 @@ class AuthViewModel(
             triple?.let { (email, name, role) ->
                 UserProfile(
                     email = email,
-                    name = name.ifBlank { "Usuario PARKeo" },
+                    name = name.ifBlank { "Usuario Parkeo" },
                     role = role
                 )
             }

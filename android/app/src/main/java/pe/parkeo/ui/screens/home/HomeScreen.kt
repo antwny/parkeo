@@ -3,6 +3,8 @@ package pe.parkeo.ui.screens.home
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,17 +14,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
-import pe.parkeo.ui.components.ParkingCard
+import pe.parkeo.ui.components.*
+import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.HomeViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -31,6 +36,7 @@ fun HomeScreen(
     onNavigateToReservations: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val extended = ParkeoTheme.colors
     val context = LocalContext.current
 
     // Coordenadas iniciales: Miraflores, Lima (-12.1215, -77.0298)
@@ -71,15 +77,25 @@ fun HomeScreen(
     }
 
     Scaffold(
+        containerColor = extended.background,
         topBar = {
-            TopAppBar(
-                title = { Text("PARKeo") },
+            ParkeoTopBar(
+                title = "Parkeo",
+                isBrandTitle = true,
                 actions = {
                     IconButton(onClick = onNavigateToReservations) {
-                        Icon(Icons.Filled.BookmarkBorder, "Mis reservas")
+                        Icon(
+                            imageVector = Icons.Filled.BookmarkBorder,
+                            contentDescription = "Mis reservas",
+                            tint = extended.textSecondary
+                        )
                     }
                     IconButton(onClick = onNavigateToProfile) {
-                        Icon(Icons.Filled.AccountCircle, "Perfil")
+                        Icon(
+                            imageVector = Icons.Filled.AccountCircle,
+                            contentDescription = "Perfil",
+                            tint = extended.textSecondary
+                        )
                     }
                 }
             )
@@ -90,36 +106,32 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Barra de búsqueda
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    viewModel.search(it)
-                },
-                placeholder = { Text("Buscar estacionamiento o distrito...") },
-                leadingIcon = { Icon(Icons.Filled.Search, null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchQuery = ""
-                            viewModel.loadParkingLots()
-                        }) {
-                            Icon(Icons.Filled.Clear, "Limpiar")
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                singleLine = true
-            )
-
-            // Mapa interactivo Google Maps
+            // Search Bar Input
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(280.dp)
+                    .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
+            ) {
+                ParkeoTextField(
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        viewModel.search(it)
+                    },
+                    placeholder = "Buscar cochera por nombre o distrito...",
+                    leadingIcon = Icons.Filled.Search,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Interactive Map View Vessel
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .padding(horizontal = Dimens.spacingMd)
+                    .clip(ParkeoCardShape)
+                    .border(Dimens.borderHairline, extended.borderSubtle, ParkeoCardShape)
             ) {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
@@ -129,7 +141,8 @@ fun HomeScreen(
                     ),
                     uiSettings = MapUiSettings(
                         myLocationButtonEnabled = locationPermissionGranted,
-                        zoomControlsEnabled = false
+                        zoomControlsEnabled = false,
+                        compassEnabled = true
                     )
                 ) {
                     uiState.parkingLots.forEach { parking ->
@@ -146,72 +159,87 @@ fun HomeScreen(
                 }
             }
 
-            // Lista de estacionamientos
-            if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else if (uiState.error != null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        Icons.Filled.ErrorOutline,
-                        null,
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(8.dp))
-                    Button(onClick = { viewModel.loadParkingLots() }) {
-                        Text("Reintentar")
+            // Parking Lots Section
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ParkeoLoadingView(message = "Buscando cocheras disponibles...")
                     }
                 }
-            } else if (uiState.parkingLots.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        Icons.Filled.SearchOff,
-                        null,
-                        tint = MaterialTheme.colorScheme.onSurface.copy(0.4f),
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "No se encontraron estacionamientos",
-                        color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
-                    )
-                }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    item {
-                        Text(
-                            "${uiState.parkingLots.size} estacionamientos disponibles",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ParkeoErrorView(
+                            message = uiState.error ?: "Error al cargar cocheras",
+                            onRetry = { viewModel.loadParkingLots() }
                         )
                     }
-                    items(uiState.parkingLots) { parking ->
-                        ParkingCard(
-                            parking = parking,
-                            onClick = { onNavigateToParkingDetail(parking.id) }
+                }
+
+                uiState.parkingLots.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ParkeoEmptyState(
+                            title = "No encontramos cocheras",
+                            subtitle = if (searchQuery.isNotBlank())
+                                "No hay resultados para \"$searchQuery\" en esta zona"
+                            else
+                                "No hay cocheras disponibles en este momento",
+                            icon = Icons.Filled.SearchOff
                         )
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(Dimens.spacingMd),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                    ) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = Dimens.spacingXs),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "COCHERAS DISPONIBLES",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                    color = extended.textTertiary
+                                )
+                                Text(
+                                    text = "${uiState.parkingLots.size} en total",
+                                    style = Typography.MonospaceTechnical,
+                                    fontSize = 12.sp,
+                                    color = extended.accent
+                                )
+                            }
+                        }
+
+                        items(uiState.parkingLots, key = { it.id }) { parking ->
+                            ParkingCard(
+                                parking = parking,
+                                onClick = { onNavigateToParkingDetail(parking.id) }
+                            )
+                        }
                     }
                 }
             }

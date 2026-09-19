@@ -1,16 +1,25 @@
 package pe.parkeo.ui.screens.vehicles
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import pe.parkeo.data.remote.dto.VehicleDto
+import pe.parkeo.ui.components.*
+import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.VehicleViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,6 +29,7 @@ fun VehiclesScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val extended = ParkeoTheme.colors
     var showAddDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.successMessage) {
@@ -30,65 +40,67 @@ fun VehiclesScreen(
     }
 
     Scaffold(
+        containerColor = extended.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Mis vehículos") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Filled.ArrowBack, "Regresar") }
-                }
+            ParkeoTopBar(
+                title = "Mis vehículos",
+                onNavigationClick = onNavigateBack
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = extended.accent,
+                contentColor = extended.onAccent,
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Icon(Icons.Filled.Add, "Agregar vehículo")
             }
         }
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ParkeoLoadingView(message = "Cargando vehículos...")
+                }
             }
-        } else if (uiState.vehicles.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.Filled.DirectionsCar,
-                    null,
-                    tint = MaterialTheme.colorScheme.onSurface.copy(0.3f),
-                    modifier = Modifier.size(80.dp)
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    "No tienes vehículos registrados",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Agrega un vehículo para hacer reservas",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(0.4f)
-                )
-                Spacer(Modifier.height(24.dp))
-                Button(onClick = { showAddDialog = true }) { Text("Agregar vehículo") }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(uiState.vehicles, key = { it.id }) { vehicle ->
-                    VehicleCard(
-                        vehicle = vehicle,
-                        onDelete = { viewModel.deleteVehicle(vehicle.id) }
+
+            uiState.vehicles.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ParkeoEmptyState(
+                        title = "Sin vehículos",
+                        subtitle = "Agrega tu primer vehículo para comenzar a reservar en nuestra red",
+                        icon = Icons.Filled.DirectionsCar,
+                        actionLabel = "Agregar vehículo",
+                        onAction = { showAddDialog = true }
                     )
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(Dimens.spacingMd),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                ) {
+                    items(uiState.vehicles, key = { it.id }) { vehicle ->
+                        VehicleCard(
+                            vehicle = vehicle,
+                            onDelete = { viewModel.deleteVehicle(vehicle.id) }
+                        )
+                    }
                 }
             }
         }
@@ -106,36 +118,45 @@ fun VehiclesScreen(
 }
 
 @Composable
-fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
+private fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
+    val extended = ParkeoTheme.colors
     var showConfirmDialog by remember { mutableStateOf(false) }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    ParkeoCard(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Dimens.spacingLg),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Filled.DirectionsCar,
-                null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(Modifier.width(12.dp))
+            // Peruvian License Plate Graphic Element
+            LicensePlateBadge(plate = vehicle.licensePlate)
+
+            Spacer(Modifier.width(14.dp))
+
             Column(modifier = Modifier.weight(1f)) {
-                Text(vehicle.licensePlate, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    listOfNotNull(vehicle.brand, vehicle.model, vehicle.color).joinToString(" • "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+                    text = listOfNotNull(vehicle.brand, vehicle.model).filter { it.isNotBlank() }.joinToString(" ")
+                        .ifBlank { "Vehículo" },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = extended.textPrimary
                 )
+
                 Text(
-                    vehicle.vehicleType.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    text = listOfNotNull(vehicle.color, vehicle.vehicleType.name).filter { it.isNotBlank() }.joinToString(" • "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = extended.textSecondary
                 )
             }
+
             IconButton(onClick = { showConfirmDialog = true }) {
-                Icon(Icons.Filled.DeleteOutline, "Eliminar", tint = MaterialTheme.colorScheme.error)
+                Icon(
+                    imageVector = Icons.Filled.DeleteOutline,
+                    contentDescription = "Eliminar",
+                    tint = extended.signalRed.copy(alpha = 0.8f),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -143,27 +164,78 @@ fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Eliminar vehículo") },
-            text = { Text("¿Estás seguro de eliminar ${vehicle.licensePlate}?") },
+            containerColor = extended.surface1,
+            title = {
+                Text(
+                    text = "Eliminar vehículo",
+                    fontWeight = FontWeight.Bold,
+                    color = extended.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Confirmas que deseas eliminar el vehículo con placa ${vehicle.licensePlate}?",
+                    color = extended.textSecondary
+                )
+            },
             confirmButton = {
-                TextButton(onClick = { onDelete(); showConfirmDialog = false }) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = {
+                    onDelete()
+                    showConfirmDialog = false
+                }) {
+                    Text("Eliminar", color = extended.signalRed, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancelar", color = extended.textSecondary)
+                }
             }
         )
     }
 }
 
+@Composable
+private fun LicensePlateBadge(plate: String) {
+    val extended = ParkeoTheme.colors
+    // Technical license plate box inspired by Peruvian standard plate
+    Surface(
+        color = extended.surface3,
+        shape = RoundedCornerShape(6.dp),
+        border = androidx.compose.foundation.BorderStroke(Dimens.borderHairline, extended.accent.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Blue header strip for "PERÚ"
+            Text(
+                text = "PERÚ",
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp,
+                color = extended.accent
+            )
+            Text(
+                text = plate,
+                style = Typography.MonospaceTechnical,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp,
+                color = extended.textPrimary
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddVehicleDialog(
+private fun AddVehicleDialog(
     vehicleTypes: List<pe.parkeo.data.remote.dto.VehicleTypeDto>,
     onDismiss: () -> Unit,
     onAdd: (String, String?, String?, String?, Long) -> Unit
 ) {
+    val extended = ParkeoTheme.colors
     var plate by remember { mutableStateOf("") }
     var brand by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
@@ -173,52 +245,76 @@ fun AddVehicleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Agregar vehículo") },
+        containerColor = extended.surface1,
+        title = {
+            Text(
+                text = "Agregar vehículo",
+                fontWeight = FontWeight.Bold,
+                color = extended.textPrimary
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            ) {
+                ParkeoTextField(
                     value = plate,
                     onValueChange = { plate = it.uppercase() },
-                    label = { Text("Placa *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = brand,
-                    onValueChange = { brand = it },
-                    label = { Text("Marca") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    label = { Text("Modelo") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = color,
-                    onValueChange = { color = it },
-                    label = { Text("Color") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    label = "Placa *",
+                    placeholder = "ABC-123",
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                    OutlinedTextField(
+                ParkeoTextField(
+                    value = brand,
+                    onValueChange = { brand = it },
+                    label = "Marca",
+                    placeholder = "Toyota",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ParkeoTextField(
+                    value = model,
+                    onValueChange = { model = it },
+                    label = "Modelo",
+                    placeholder = "Corolla",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ParkeoTextField(
+                    value = color,
+                    onValueChange = { color = it },
+                    label = "Color",
+                    placeholder = "Gris Metálico",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }
+                ) {
+                    ParkeoTextField(
                         value = vehicleTypes.firstOrNull { it.id == selectedTypeId }?.name ?: "Seleccionar tipo",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Tipo de vehículo") },
+                        label = "Tipo de vehículo",
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
                     )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
                         vehicleTypes.forEach { type ->
                             DropdownMenuItem(
                                 text = { Text(type.name) },
-                                onClick = { selectedTypeId = type.id; expanded = false }
+                                onClick = {
+                                    selectedTypeId = type.id
+                                    expanded = false
+                                }
                             )
                         }
                     }
@@ -226,7 +322,8 @@ fun AddVehicleDialog(
             }
         },
         confirmButton = {
-            Button(
+            ParkeoButton(
+                text = "Guardar",
                 onClick = {
                     selectedTypeId?.let { typeId ->
                         onAdd(
@@ -238,9 +335,18 @@ fun AddVehicleDialog(
                         )
                     }
                 },
-                enabled = plate.isNotBlank() && selectedTypeId != null
-            ) { Text("Agregar") }
+                enabled = plate.isNotBlank() && selectedTypeId != null,
+                style = ParkeoButtonStyle.Primary,
+                modifier = Modifier.height(Dimens.buttonHeightDefault)
+            )
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = {
+            ParkeoButton(
+                text = "Cancelar",
+                onClick = onDismiss,
+                style = ParkeoButtonStyle.Ghost,
+                modifier = Modifier.height(Dimens.buttonHeightDefault)
+            )
+        }
     )
 }

@@ -10,11 +10,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
+import pe.parkeo.ui.components.ParkeoButton
+import pe.parkeo.ui.components.ParkeoButtonStyle
+import pe.parkeo.ui.components.ParkeoTextField
+import pe.parkeo.ui.components.ParkeoTopBar
+import pe.parkeo.ui.theme.Dimens
+import pe.parkeo.ui.theme.ParkeoCardShape
+import pe.parkeo.ui.theme.ParkeoTheme
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel,
@@ -22,6 +29,7 @@ fun RegisterScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val extended = ParkeoTheme.colors
 
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
@@ -29,27 +37,24 @@ fun RegisterScreen(
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) onRegisterSuccess()
     }
 
-    fun validate(): Boolean {
-        return firstName.isNotBlank() && lastName.isNotBlank() &&
-                android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() &&
-                password.length >= 8 && password == confirmPassword
-    }
+    val passwordsMatch = confirmPassword.isBlank() || password == confirmPassword
+    val isValid = firstName.isNotBlank() &&
+            lastName.isNotBlank() &&
+            android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() &&
+            password.length >= 8 &&
+            password == confirmPassword
 
     Scaffold(
+        containerColor = extended.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Crear cuenta") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, "Regresar")
-                    }
-                }
+            ParkeoTopBar(
+                title = "Crear cuenta",
+                onNavigationClick = onNavigateBack
             )
         }
     ) { padding ->
@@ -58,95 +63,129 @@ fun RegisterScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 32.dp, vertical = 16.dp),
+                .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            OutlinedTextField(
-                value = firstName,
-                onValueChange = { firstName = it },
-                label = { Text("Nombre") },
-                leadingIcon = { Icon(Icons.Filled.Person, null) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = lastName,
-                onValueChange = { lastName = it },
-                label = { Text("Apellido") },
-                leadingIcon = { Icon(Icons.Filled.Person, null) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it; viewModel.clearError() },
-                label = { Text("Correo electrónico") },
-                leadingIcon = { Icon(Icons.Filled.Email, null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = { Text("Teléfono (opcional)") },
-                leadingIcon = { Icon(Icons.Filled.Phone, null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Contraseña (mín. 8 caracteres)") },
-                leadingIcon = { Icon(Icons.Filled.Lock, null) },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null)
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = { Text("Confirmar contraseña") },
-                leadingIcon = { Icon(Icons.Filled.Lock, null) },
-                isError = confirmPassword.isNotBlank() && password != confirmPassword,
-                supportingText = {
-                    if (confirmPassword.isNotBlank() && password != confirmPassword) {
-                        Text("Las contraseñas no coinciden")
-                    }
-                },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+            Text(
+                text = "Únete a la red de movilidad Parkeo",
+                style = MaterialTheme.typography.bodyMedium,
+                color = extended.textSecondary,
+                modifier = Modifier.padding(bottom = Dimens.spacingLg)
             )
 
-            uiState.error?.let { error ->
-                Spacer(Modifier.height(8.dp))
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                    Text(
-                        error,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ParkeoTextField(
+                    value = firstName,
+                    onValueChange = { firstName = it },
+                    label = "Nombre",
+                    placeholder = "Juan",
+                    leadingIcon = Icons.Filled.Person,
+                    modifier = Modifier.weight(1f)
+                )
+
+                ParkeoTextField(
+                    value = lastName,
+                    onValueChange = { lastName = it },
+                    label = "Apellido",
+                    placeholder = "Pérez",
+                    leadingIcon = Icons.Filled.Person,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(Dimens.spacingMd))
+
+            ParkeoTextField(
+                value = email,
+                onValueChange = {
+                    email = it
+                    viewModel.clearError()
+                },
+                label = "Correo electrónico",
+                placeholder = "juan.perez@parkeo.pe",
+                leadingIcon = Icons.Filled.Email,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(Dimens.spacingMd))
+
+            ParkeoTextField(
+                value = phone,
+                onValueChange = { phone = it },
+                label = "Teléfono móvil (opcional)",
+                placeholder = "+51 999 888 777",
+                leadingIcon = Icons.Filled.Phone,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(Dimens.spacingMd))
+
+            ParkeoTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = "Contraseña",
+                placeholder = "Mínimo 8 caracteres",
+                leadingIcon = Icons.Filled.Lock,
+                isPassword = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(Dimens.spacingMd))
+
+            ParkeoTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                label = "Confirmar contraseña",
+                placeholder = "Repite la contraseña",
+                leadingIcon = Icons.Filled.Lock,
+                isPassword = true,
+                errorMessage = if (!passwordsMatch) "Las contraseñas no coinciden" else null,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            uiState.error?.let { errorMsg ->
+                Spacer(Modifier.height(Dimens.spacingMd))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = ParkeoCardShape,
+                    color = extended.signalRed.copy(alpha = 0.12f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        Dimens.borderHairline,
+                        extended.signalRed.copy(alpha = 0.4f)
                     )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(Dimens.spacingMd),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ErrorOutline,
+                            contentDescription = null,
+                            tint = extended.signalRed,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(Dimens.spacingSm))
+                        Text(
+                            text = errorMsg,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = extended.signalRed,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Dimens.spacingXl))
 
-            Button(
+            ParkeoButton(
+                text = "Crear cuenta",
                 onClick = {
                     viewModel.register(
                         email = email.trim(),
@@ -156,21 +195,36 @@ fun RegisterScreen(
                         phone = phone.trim().ifBlank { null }
                     )
                 },
+                isLoading = uiState.isLoading,
+                enabled = isValid,
+                style = ParkeoButtonStyle.Primary,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                enabled = !uiState.isLoading && validate()
+                    .height(Dimens.buttonHeightLarge)
+            )
+
+            Spacer(Modifier.height(Dimens.spacingMd))
+
+            TextButton(
+                onClick = onNavigateBack,
+                colors = ButtonDefaults.textButtonColors(contentColor = extended.textSecondary)
             ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Text("Crear cuenta")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "¿Ya tienes una cuenta? ",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = extended.textSecondary
+                    )
+                    Text(
+                        text = "Inicia sesión",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = extended.accent
+                    )
                 }
             }
 
-            TextButton(onClick = onNavigateBack) {
-                Text("¿Ya tienes cuenta? Inicia sesión")
-            }
+            Spacer(Modifier.height(Dimens.spacingXl))
         }
     }
 }

@@ -1,26 +1,22 @@
 package pe.parkeo.ui.screens.admin
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pe.parkeo.data.remote.dto.ParkingLotDto
+import pe.parkeo.ui.components.*
 import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.AdminViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminParkingLotsScreen(
     viewModel: AdminViewModel,
@@ -28,6 +24,7 @@ fun AdminParkingLotsScreen(
     onSelectLotDetail: ((Long) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val extended = ParkeoTheme.colors
     var searchQuery by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -55,20 +52,19 @@ fun AdminParkingLotsScreen(
     }
 
     Scaffold(
+        containerColor = extended.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Estacionamientos", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    if (onNavigateBack != null) {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "Regresar")
-                        }
-                    }
-                },
+            ParkeoTopBar(
+                title = "Estacionamientos",
+                onNavigationClick = onNavigateBack,
                 actions = {
                     IconButton(onClick = { viewModel.loadDashboardData(refresh = true) }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Actualizar")
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Actualizar",
+                            tint = extended.textSecondary
+                        )
                     }
                 }
             )
@@ -80,85 +76,78 @@ fun AdminParkingLotsScreen(
                 .padding(padding)
         ) {
             // Search field
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Buscar cochera o distrito...") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Filled.Clear, contentDescription = "Limpiar")
+                    .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
+            ) {
+                ParkeoTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = "Buscar cochera o distrito...",
+                    leadingIcon = Icons.Filled.Search,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            when {
+                uiState.isLoading && uiState.parkingLots.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ParkeoLoadingView(message = "Cargando estacionamientos...")
+                    }
+                }
+
+                filteredLots.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ParkeoEmptyState(
+                            title = "No hay resultados",
+                            subtitle = if (searchQuery.isBlank())
+                                "No hay estacionamientos registrados en el sistema"
+                            else
+                                "No se encontraron estacionamientos para \"$searchQuery\"",
+                            icon = Icons.Filled.LocalParking
+                        )
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(Dimens.spacingMd),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
+                    ) {
+                        item {
+                            Text(
+                                text = "${filteredLots.size} ESTACIONAMIENTOS",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp,
+                                color = extended.textTertiary
+                            )
                         }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
 
-            if (uiState.isLoading && uiState.parkingLots.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else if (filteredLots.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Filled.LocalParking,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            text = if (searchQuery.isBlank()) "No hay estacionamientos registrados" else "No se encontraron resultados",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    item {
-                        Text(
-                            text = "${filteredLots.size} estacionamientos encontrados",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                    }
-
-                    items(filteredLots, key = { it.id }) { lot ->
-                        AdminParkingLotCard(
-                            lot = lot,
-                            onToggleOpen = { isOpen ->
-                                viewModel.toggleParkingLotStatus(lot.id, isOpen = isOpen, isActive = lot.isActive)
-                            },
-                            onToggleActive = { isActive ->
-                                viewModel.toggleParkingLotStatus(lot.id, isOpen = lot.isOpen, isActive = isActive)
-                            },
-                            onClick = { onSelectLotDetail?.invoke(lot.id) }
-                        )
-                    }
-
-                    item {
-                        Spacer(Modifier.height(16.dp))
+                        items(filteredLots, key = { it.id }) { lot ->
+                            AdminParkingLotCard(
+                                lot = lot,
+                                onToggleOpen = { isOpen ->
+                                    viewModel.toggleParkingLotStatus(lot.id, isOpen = isOpen, isActive = lot.isActive)
+                                },
+                                onToggleActive = { isActive ->
+                                    viewModel.toggleParkingLotStatus(lot.id, isOpen = lot.isOpen, isActive = isActive)
+                                },
+                                onClick = { onSelectLotDetail?.invoke(lot.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -173,17 +162,16 @@ private fun AdminParkingLotCard(
     onToggleActive: (Boolean) -> Unit,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
+    val extended = ParkeoTheme.colors
+
+    ParkeoCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        accentBorder = lot.isOpen && lot.isActive
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(Dimens.spacingLg)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -194,48 +182,31 @@ private fun AdminParkingLotCard(
                     Text(
                         text = lot.name,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = extended.textPrimary
                     )
                     Text(
                         text = "${lot.address}${lot.district?.let { ", $it" } ?: ""}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = extended.textSecondary
                     )
                 }
 
-                // Status badges
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Surface(
-                        color = if (lot.isOpen) ParkeoGreen500.copy(alpha = 0.15f) else ParkeoRed500.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Text(
-                            text = if (lot.isOpen) "ABIERTO" else "CERRADO",
-                            color = if (lot.isOpen) ParkeoGreen500 else ParkeoRed500,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-
-                    Surface(
-                        color = if (lot.isActive) ParkeoBlue600.copy(alpha = 0.15f) else ParkeoGray500.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(6.dp)
-                    ) {
-                        Text(
-                            text = if (lot.isActive) "ACTIVO" else "INACTIVO",
-                            color = if (lot.isActive) ParkeoBlue600 else ParkeoGray500,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
+                    ParkeoBadge(
+                        status = if (lot.isOpen) ParkeoBadgeStatus.Available else ParkeoBadgeStatus.Closed,
+                        labelOverride = if (lot.isOpen) "Abierto" else "Cerrado"
+                    )
+                    ParkeoBadge(
+                        status = if (lot.isActive) ParkeoBadgeStatus.Admin else ParkeoBadgeStatus.Occupied,
+                        labelOverride = if (lot.isActive) "Activo" else "Inactivo"
+                    )
                 }
             }
 
             Spacer(Modifier.height(10.dp))
 
-            // Capacity details
+            // Capacity details in Monospace
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -245,36 +216,54 @@ private fun AdminParkingLotCard(
                     Icon(
                         Icons.Filled.DirectionsCar,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier.size(15.dp),
+                        tint = extended.textTertiary
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        text = "Capacidad: ${lot.totalCapacity}",
+                        text = "Capacidad: ",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = extended.textSecondary
+                    )
+                    Text(
+                        text = "${lot.totalCapacity}",
+                        style = Typography.MonospaceTechnical,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = extended.textPrimary
                     )
                 }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Filled.CheckCircle,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = ParkeoGreen500
+                        modifier = Modifier.size(15.dp),
+                        tint = extended.accent
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        text = "Disponibles: ${lot.availableSpaces}",
+                        text = "Disponibles: ",
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = ParkeoGreen500
+                        color = extended.textSecondary
+                    )
+                    Text(
+                        text = "${lot.availableSpaces}",
+                        style = Typography.MonospaceTechnical,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = extended.accent
                     )
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(
+                color = extended.borderSubtle,
+                thickness = Dimens.borderHairline,
+                modifier = Modifier.padding(vertical = 12.dp)
+            )
 
-            // Switches for control
+            // Switch controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -287,11 +276,18 @@ private fun AdminParkingLotCard(
                     Text(
                         text = "Abierto:",
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = extended.textPrimary
                     )
                     Switch(
                         checked = lot.isOpen,
                         onCheckedChange = { onToggleOpen(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = extended.onAccent,
+                            checkedTrackColor = extended.accent,
+                            uncheckedThumbColor = extended.textTertiary,
+                            uncheckedTrackColor = extended.surface3
+                        ),
                         modifier = Modifier.height(28.dp)
                     )
                 }
@@ -303,11 +299,18 @@ private fun AdminParkingLotCard(
                     Text(
                         text = "Activo en red:",
                         style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = extended.textPrimary
                     )
                     Switch(
                         checked = lot.isActive,
                         onCheckedChange = { onToggleActive(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = extended.onAccent,
+                            checkedTrackColor = extended.accent,
+                            uncheckedThumbColor = extended.textTertiary,
+                            uncheckedTrackColor = extended.surface3
+                        ),
                         modifier = Modifier.height(28.dp)
                     )
                 }

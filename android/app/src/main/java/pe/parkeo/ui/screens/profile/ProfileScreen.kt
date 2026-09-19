@@ -1,9 +1,13 @@
 package pe.parkeo.ui.screens.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,9 +18,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import pe.parkeo.ui.components.*
+import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     viewModel: AuthViewModel,
@@ -26,16 +32,17 @@ fun ProfileScreen(
     onLogout: () -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
+    val extended = ParkeoTheme.colors
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val roleUpper = (userProfile?.role ?: "").uppercase()
     val isAdmin = roleUpper.contains("ADMIN")
     val isOperator = roleUpper.contains("OPERAT")
 
-    val roleDisplayName = when {
-        isAdmin -> "Administrador"
-        isOperator -> "Operador"
-        else -> "Cliente"
+    val roleBadgeStatus = when {
+        isAdmin -> ParkeoBadgeStatus.Admin
+        isOperator -> ParkeoBadgeStatus.Operator
+        else -> ParkeoBadgeStatus.Client
     }
 
     val avatarIcon = when {
@@ -45,12 +52,11 @@ fun ProfileScreen(
     }
 
     Scaffold(
+        containerColor = extended.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Mi perfil") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Filled.ArrowBack, "Regresar") }
-                }
+            ParkeoTopBar(
+                title = "Mi perfil",
+                onNavigationClick = onNavigateBack
             )
         }
     ) { padding ->
@@ -58,162 +64,184 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(Dimens.spacingMd),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-            ) {
+            // Identity Hero Card
+            ParkeoCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier.padding(Dimens.spacingLg),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
+                            .background(extended.surface2)
+                            .border(Dimens.borderHairline, extended.borderSubtle, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = avatarIcon,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(36.dp)
+                            tint = extended.accent,
+                            modifier = Modifier.size(32.dp)
                         )
                     }
+
                     Spacer(Modifier.width(16.dp))
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = userProfile?.name?.ifBlank { "Usuario PARKeo" } ?: "Usuario PARKeo",
+                            text = userProfile?.name?.ifBlank { "Usuario Parkeo" } ?: "Usuario Parkeo",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = extended.textPrimary
                         )
+
                         Text(
                             text = userProfile?.email ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(0.7f)
+                            style = MaterialTheme.typography.bodySmall,
+                            color = extended.textSecondary
                         )
-                        SuggestionChip(
-                            onClick = {},
-                            label = {
-                                Text(
-                                    roleDisplayName,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            },
-                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                labelColor = MaterialTheme.colorScheme.primary
-                            ),
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
+
+                        Spacer(Modifier.height(6.dp))
+
+                        ParkeoBadge(status = roleBadgeStatus)
                     }
                 }
             }
 
+            // Admin privileges banner
             if (isAdmin) {
-                Spacer(Modifier.height(16.dp))
-                Card(
+                ParkeoCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
+                    accentBorder = true
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(
+                        modifier = Modifier.padding(Dimens.spacingLg),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Filled.Shield,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                imageVector = Icons.Filled.Shield,
+                                contentDescription = null,
+                                tint = extended.accent,
+                                modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Acceso de Administrador",
+                                text = "Acceso de Administrador",
                                 style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = extended.textPrimary
                             )
                         }
-                        Spacer(Modifier.height(4.dp))
                         Text(
-                            "Tienes permisos para administrar usuarios, configurar estacionamientos y consultar métricas globales.",
+                            text = "Tienes permisos totales para gestionar cocheras de la red, actualizar estados, supervisar usuarios y consultar métricas globales.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(0.8f)
+                            color = extended.textSecondary,
+                            lineHeight = 18.sp
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            // Section: Gestión
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                Text(
+                    text = "GESTIÓN",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = extended.textTertiary,
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                )
 
-            Text(
-                "Gestión",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(0.5f),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+                ProfileOptionTile(
+                    icon = Icons.Filled.DirectionsCar,
+                    title = "Mis vehículos",
+                    onClick = onNavigateToVehicles
+                )
 
-            ProfileOption(
-                icon = Icons.Filled.DirectionsCar,
-                title = "Mis vehículos",
-                onClick = onNavigateToVehicles
-            )
-            ProfileOption(
-                icon = Icons.Filled.BookmarkBorder,
-                title = "Mis reservas",
-                onClick = onNavigateToReservations
-            )
-
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Aplicación",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(0.5f),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            ProfileOption(
-                icon = Icons.Filled.Security,
-                title = "Seguridad y privacidad",
-                onClick = {}
-            )
-            ProfileOption(
-                icon = Icons.Filled.Info,
-                title = "Acerca de PARKeo v1.0",
-                onClick = {}
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            OutlinedButton(
-                onClick = { showLogoutDialog = true },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) {
-                Icon(Icons.Filled.Logout, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Cerrar sesión")
+                ProfileOptionTile(
+                    icon = Icons.Filled.BookmarkBorder,
+                    title = "Mis reservas",
+                    onClick = onNavigateToReservations
+                )
             }
+
+            // Section: Aplicación
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                Text(
+                    text = "APLICACIÓN",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = extended.textTertiary,
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                )
+
+                ProfileOptionTile(
+                    icon = Icons.Filled.Security,
+                    title = "Seguridad y privacidad",
+                    onClick = {}
+                )
+
+                ProfileOptionTile(
+                    icon = Icons.Filled.Info,
+                    title = "Acerca de Parkeo v1.0",
+                    onClick = {}
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Logout Button
+            ParkeoButton(
+                text = "Cerrar sesión",
+                onClick = { showLogoutDialog = true },
+                leadingIcon = Icons.Filled.Logout,
+                style = ParkeoButtonStyle.Destructive,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(Dimens.buttonHeightLarge)
+            )
+
+            Spacer(Modifier.height(Dimens.spacingLg))
         }
 
         if (showLogoutDialog) {
             AlertDialog(
                 onDismissRequest = { showLogoutDialog = false },
-                title = { Text("Cerrar sesión") },
-                text = { Text("¿Estás seguro que deseas cerrar tu sesión en este dispositivo?") },
+                containerColor = extended.surface1,
+                title = {
+                    Text(
+                        text = "Cerrar sesión",
+                        fontWeight = FontWeight.Bold,
+                        color = extended.textPrimary
+                    )
+                },
+                text = {
+                    Text(
+                        text = "¿Estás seguro de que deseas cerrar tu sesión en Parkeo?",
+                        color = extended.textSecondary
+                    )
+                },
                 confirmButton = {
                     TextButton(onClick = {
                         showLogoutDialog = false
                         viewModel.logout()
                         onLogout()
                     }) {
-                        Text("Cerrar sesión", color = MaterialTheme.colorScheme.error)
+                        Text("Cerrar sesión", color = extended.signalRed, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showLogoutDialog = false }) { Text("Cancelar") }
+                    TextButton(onClick = { showLogoutDialog = false }) {
+                        Text("Cancelar", color = extended.textSecondary)
+                    }
                 }
             )
         }
@@ -221,30 +249,41 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileOption(
+private fun ProfileOptionTile(
     icon: ImageVector,
     title: String,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
+    val extended = ParkeoTheme.colors
+    ParkeoCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(16.dp),
+                .padding(horizontal = Dimens.spacingLg, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(12.dp))
-            Text(title, modifier = Modifier.weight(1f))
             Icon(
-                Icons.Filled.ChevronRight,
-                null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(0.3f)
+                imageVector = icon,
+                contentDescription = null,
+                tint = extended.accent,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(14.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = extended.textPrimary,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = extended.textTertiary,
+                modifier = Modifier.size(18.dp)
             )
         }
     }

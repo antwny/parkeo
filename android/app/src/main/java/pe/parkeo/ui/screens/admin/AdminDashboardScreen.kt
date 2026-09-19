@@ -1,8 +1,11 @@
 package pe.parkeo.ui.screens.admin
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,10 +18,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pe.parkeo.ui.components.*
 import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.AdminViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminDashboardScreen(
     viewModel: AdminViewModel,
@@ -26,6 +29,7 @@ fun AdminDashboardScreen(
     onNavigateToUsers: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val extended = ParkeoTheme.colors
     val stats = uiState.statistics
 
     LaunchedEffect(Unit) {
@@ -33,25 +37,18 @@ fun AdminDashboardScreen(
     }
 
     Scaffold(
+        containerColor = extended.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Panel de Administración",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Supervisión global de la red PARKeo",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+            ParkeoTopBar(
+                title = "Panel de Administración",
+                subtitle = "Supervisión global de la red Parkeo",
                 actions = {
                     IconButton(onClick = { viewModel.loadDashboardData(refresh = true) }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Actualizar")
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Actualizar",
+                            tint = extended.textSecondary
+                        )
                     }
                 }
             )
@@ -64,22 +61,24 @@ fun AdminDashboardScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                ParkeoLoadingView(message = "Cargando métricas de la red...")
             }
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = Dimens.spacingMd),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
             ) {
                 item {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "Métricas Principales",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = "MÉTRICAS CLAVE",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = extended.textTertiary
                     )
                 }
 
@@ -87,22 +86,22 @@ fun AdminDashboardScreen(
                     // KPI Row 1: Estacionamientos y Total Reservas
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                     ) {
-                        KpiCard(
+                        ModernKpiCard(
                             modifier = Modifier.weight(1f),
                             title = "Estacionamientos",
                             value = "${stats.totalParkingLots}",
                             icon = Icons.Filled.LocalParking,
-                            tintColor = ParkeoBlue600,
+                            tintColor = extended.accent,
                             onClick = onNavigateToParkingLots
                         )
-                        KpiCard(
+                        ModernKpiCard(
                             modifier = Modifier.weight(1f),
                             title = "Total Reservas",
                             value = "${stats.totalReservations}",
                             icon = Icons.Filled.BookmarkBorder,
-                            tintColor = ParkeoCyan500
+                            tintColor = extended.textPrimary
                         )
                     }
                 }
@@ -111,21 +110,21 @@ fun AdminDashboardScreen(
                     // KPI Row 2: Reservas Activas y Pendientes
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                     ) {
-                        KpiCard(
+                        ModernKpiCard(
                             modifier = Modifier.weight(1f),
                             title = "Reservas Activas",
                             value = "${stats.activeReservations}",
                             icon = Icons.Filled.DirectionsCar,
-                            tintColor = ParkeoGreen500
+                            tintColor = extended.signalGreen
                         )
-                        KpiCard(
+                        ModernKpiCard(
                             modifier = Modifier.weight(1f),
                             title = "Pendientes",
                             value = "${stats.pendingReservations}",
                             icon = Icons.Filled.Schedule,
-                            tintColor = ParkeoAmber500
+                            tintColor = extended.signalAmber
                         )
                     }
                 }
@@ -134,122 +133,134 @@ fun AdminDashboardScreen(
                     // KPI Row 3: Completadas y Canceladas
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                     ) {
-                        KpiCard(
+                        ModernKpiCard(
                             modifier = Modifier.weight(1f),
                             title = "Completadas",
                             value = "${stats.completedReservations}",
                             icon = Icons.Filled.CheckCircleOutline,
-                            tintColor = Color(0xFF10B981)
+                            tintColor = extended.signalGreen
                         )
-                        KpiCard(
+                        ModernKpiCard(
                             modifier = Modifier.weight(1f),
                             title = "Canceladas",
                             value = "${stats.cancelledReservations}",
                             icon = Icons.Filled.Cancel,
-                            tintColor = ParkeoRed500
+                            tintColor = extended.signalRed
                         )
                     }
                 }
 
                 item {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Accesos Rápidos",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        text = "GESTIÓN DIRECTA",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = extended.textTertiary
                     )
                 }
 
                 item {
-                    Card(
-                        onClick = onNavigateToParkingLots,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        shape = RoundedCornerShape(12.dp)
+                    ParkeoCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onNavigateToParkingLots)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(Dimens.spacingLg),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
-                                    .background(ParkeoBlue600.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                    .size(46.dp)
+                                    .background(extended.accent.copy(alpha = 0.12f), CircleShape)
+                                    .border(Dimens.borderHairline, extended.accent.copy(alpha = 0.3f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     Icons.Filled.Storefront,
                                     contentDescription = null,
-                                    tint = ParkeoBlue600,
-                                    modifier = Modifier.size(28.dp)
+                                    tint = extended.accent,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
+
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "Gestión de Estacionamientos",
                                     style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold,
+                                    color = extended.textPrimary
                                 )
                                 Text(
-                                    text = "${uiState.parkingLots.size} locales registrados. Control de apertura y actividad.",
+                                    text = "${uiState.parkingLots.size} locales en la red. Control de disponibilidad y estado.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = extended.textSecondary
                                 )
                             }
-                            Icon(Icons.Filled.ChevronRight, contentDescription = null)
+
+                            Icon(
+                                Icons.Filled.ChevronRight,
+                                contentDescription = null,
+                                tint = extended.textTertiary
+                            )
                         }
                     }
                 }
 
                 item {
-                    Card(
-                        onClick = onNavigateToUsers,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        shape = RoundedCornerShape(12.dp)
+                    ParkeoCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onNavigateToUsers)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(Dimens.spacingLg),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
-                                    .background(ParkeoAmber500.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                    .size(46.dp)
+                                    .background(extended.surface3, CircleShape)
+                                    .border(Dimens.borderHairline, extended.borderSubtle, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     Icons.Filled.Group,
                                     contentDescription = null,
-                                    tint = ParkeoAmber500,
-                                    modifier = Modifier.size(28.dp)
+                                    tint = extended.textPrimary,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
+
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "Gestión de Usuarios",
                                     style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold,
+                                    color = extended.textPrimary
                                 )
                                 Text(
-                                    text = "${uiState.users.size} usuarios (Admin, Operadores, Clientes).",
+                                    text = "${uiState.users.size} cuentas registradas (Admin, Operadores, Clientes).",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = extended.textSecondary
                                 )
                             }
-                            Icon(Icons.Filled.ChevronRight, contentDescription = null)
+
+                            Icon(
+                                Icons.Filled.ChevronRight,
+                                contentDescription = null,
+                                tint = extended.textTertiary
+                            )
                         }
                     }
                 }
@@ -263,7 +274,7 @@ fun AdminDashboardScreen(
 }
 
 @Composable
-private fun KpiCard(
+private fun ModernKpiCard(
     modifier: Modifier = Modifier,
     title: String,
     value: String,
@@ -271,20 +282,16 @@ private fun KpiCard(
     tintColor: Color,
     onClick: (() -> Unit)? = null
 ) {
-    Card(
-        onClick = { onClick?.invoke() },
-        enabled = onClick != null,
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
+    val extended = ParkeoTheme.colors
+    ParkeoCard(
+        modifier = modifier.then(
+            if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+        )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(Dimens.spacingLg)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -293,24 +300,34 @@ private fun KpiCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelSmall,
+                    color = extended.textSecondary,
+                    maxLines = 1
                 )
+
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .background(tintColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                        .size(32.dp)
+                        .background(tintColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, contentDescription = null, tint = tintColor, modifier = Modifier.size(20.dp))
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = tintColor,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
-            Spacer(Modifier.height(10.dp))
+
+            Spacer(Modifier.height(8.dp))
+
             Text(
                 text = value,
+                style = Typography.MonospaceTechnical,
                 fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                fontWeight = FontWeight.Black,
+                color = extended.textPrimary
             )
         }
     }

@@ -1,7 +1,9 @@
 package pe.parkeo.ui.screens.parking
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -9,10 +11,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import pe.parkeo.ui.components.*
+import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.ParkingDetailViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParkingDetailScreen(
     parkingId: Long,
@@ -21,79 +26,85 @@ fun ParkingDetailScreen(
     onNavigateToReservation: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val extended = ParkeoTheme.colors
 
     LaunchedEffect(parkingId) {
         viewModel.loadParkingLot(parkingId)
     }
 
     Scaffold(
+        containerColor = extended.background,
         topBar = {
-            TopAppBar(
-                title = { Text(uiState.parkingLot?.name ?: "Detalle") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, "Regresar")
-                    }
-                }
+            ParkeoTopBar(
+                title = uiState.parkingLot?.name ?: "Detalle de cochera",
+                onNavigationClick = onNavigateBack
             )
         },
         bottomBar = {
             uiState.parkingLot?.let { parking ->
-                Surface(shadowElevation = 8.dp) {
+                Surface(
+                    color = extended.surface1,
+                    border = androidx.compose.foundation.BorderStroke(
+                        Dimens.borderHairline,
+                        extended.borderSubtle
+                    )
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            .navigationBarsPadding()
+                            .padding(Dimens.spacingMd),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        OutlinedButton(
+                        ParkeoButton(
+                            text = "Regresar",
                             onClick = onNavigateBack,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Filled.Map, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Ver mapa")
-                        }
-                        Button(
+                            leadingIcon = Icons.Filled.ArrowBack,
+                            style = ParkeoButtonStyle.Secondary,
+                            modifier = Modifier
+                                .weight(0.9f)
+                                .height(Dimens.buttonHeightDefault)
+                        )
+
+                        ParkeoButton(
+                            text = "Reservar espacio",
                             onClick = { onNavigateToReservation(parking.id) },
-                            modifier = Modifier.weight(1f),
-                            enabled = parking.isOpen && parking.availableSpaces > 0
-                        ) {
-                            Icon(Icons.Filled.BookmarkAdd, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Reservar")
-                        }
+                            leadingIcon = Icons.Filled.BookmarkAdd,
+                            enabled = parking.isOpen && parking.availableSpaces > 0,
+                            style = ParkeoButtonStyle.Primary,
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .height(Dimens.buttonHeightDefault)
+                        )
                     }
                 }
             }
         }
     ) { padding ->
         when {
-            uiState.isLoading -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ParkeoLoadingView(message = "Cargando detalles...")
+                }
+            }
 
-            uiState.error != null -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.Filled.ErrorOutline,
-                    null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(64.dp)
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
-                Spacer(Modifier.height(16.dp))
-                Button(onClick = { viewModel.loadParkingLot(parkingId) }) { Text("Reintentar") }
+            uiState.error != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ParkeoErrorView(
+                        message = uiState.error ?: "Error al cargar la información",
+                        onRetry = { viewModel.loadParkingLot(parkingId) }
+                    )
+                }
             }
 
             uiState.parkingLot != null -> {
@@ -103,150 +114,256 @@ fun ParkingDetailScreen(
                         .fillMaxSize()
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(Dimens.spacingMd),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
                 ) {
-                    // Tarjeta de disponibilidad
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (parking.availableSpaces > 0)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.errorContainer
-                        )
+                    // Availability Hero Card
+                    ParkeoCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        accentBorder = parking.availableSpaces > 0
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text("Espacios disponibles", style = MaterialTheme.typography.labelMedium)
-                                Text(
-                                    "${parking.availableSpaces} de ${parking.totalCapacity}",
-                                    style = MaterialTheme.typography.headlineMedium
-                                )
-                            }
-                            Icon(
-                                Icons.Filled.LocalParking,
-                                null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        LinearProgressIndicator(
-                            progress = {
-                                if (parking.totalCapacity > 0)
-                                    1f - parking.availableSpaces.toFloat() / parking.totalCapacity
-                                else 0f
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .padding(bottom = 12.dp)
-                        )
-                    }
-
-                    // Información general
-                    Card {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier.padding(Dimens.spacingLg),
+                            verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
                         ) {
-                            Text("Información", style = MaterialTheme.typography.titleMedium)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Filled.LocationOn,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(parking.address, style = MaterialTheme.typography.bodyMedium)
-                            }
-                            parking.phone?.let {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Filled.Phone,
-                                        null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "DISPONIBILIDAD EN TIEMPO REAL",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp,
+                                        color = extended.textTertiary
                                     )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(it, style = MaterialTheme.typography.bodyMedium)
+                                    Spacer(Modifier.height(4.dp))
+                                    Row(verticalAlignment = Alignment.Bottom) {
+                                        Text(
+                                            text = "${parking.availableSpaces}",
+                                            style = Typography.MonospaceTechnical,
+                                            fontSize = 36.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = if (parking.availableSpaces > 0) extended.accent else extended.signalRed
+                                        )
+                                        Text(
+                                            text = " / ${parking.totalCapacity} espacios",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = extended.textSecondary,
+                                            modifier = Modifier.padding(bottom = 6.dp, start = 6.dp)
+                                        )
+                                    }
+                                }
+
+                                ParkeoBadge(
+                                    status = if (!parking.isOpen)
+                                        ParkeoBadgeStatus.Closed
+                                    else if (parking.availableSpaces > 0)
+                                        ParkeoBadgeStatus.Available
+                                    else
+                                        ParkeoBadgeStatus.Occupied
+                                )
+                            }
+
+                            // Linear progress indicator
+                            val occupancyRatio = if (parking.totalCapacity > 0) {
+                                1f - (parking.availableSpaces.toFloat() / parking.totalCapacity)
+                            } else 0f
+
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                LinearProgressIndicator(
+                                    progress = { occupancyRatio },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp),
+                                    color = if (parking.availableSpaces > 0) extended.accent else extended.signalRed,
+                                    trackColor = extended.surface3
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Ocupación: ${(occupancyRatio * 100).toInt()}%",
+                                        style = Typography.MonospaceTechnical,
+                                        fontSize = 11.sp,
+                                        color = extended.textTertiary
+                                    )
+                                    Text(
+                                        text = if (parking.isOpen) "Abierto" else "Cerrado temporalmente",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (parking.isOpen) extended.signalGreen else extended.signalRed
+                                    )
                                 }
                             }
-                            val statusText = if (parking.isOpen) "Abierto hoy" else "Cerrado"
-                            val statusIcon = if (parking.isOpen) Icons.Filled.CheckCircle else Icons.Filled.Cancel
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    statusIcon,
-                                    null,
-                                    tint = if (parking.isOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(statusText, style = MaterialTheme.typography.bodyMedium)
-                            }
                         }
                     }
 
-                    // Tarifas
-                    if (parking.tariffs.isNotEmpty()) {
-                        Card {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text("Tarifas", style = MaterialTheme.typography.titleMedium)
-                                parking.tariffs.forEach { tariff ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text("${tariff.vehicleType} (${tariff.tariffType})", style = MaterialTheme.typography.bodyMedium)
-                                        Text("S/ ${String.format("%.2f", tariff.price)}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                    // Location & Contact Information Card
+                    ParkeoCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(Dimens.spacingLg),
+                            verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
+                        ) {
+                            Text(
+                                text = "UBICACIÓN Y CONTACTO",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp,
+                                color = extended.textTertiary
+                            )
+
+                            Row(verticalAlignment = Alignment.Top) {
+                                Icon(
+                                    imageVector = Icons.Filled.LocationOn,
+                                    contentDescription = null,
+                                    tint = extended.accent,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .padding(top = 2.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = parking.address,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = extended.textPrimary
+                                    )
+                                    parking.district?.let {
+                                        Text(
+                                            text = "$it, Lima",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = extended.textSecondary
+                                        )
                                     }
                                 }
                             }
+
+                            parking.phone?.let { phone ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Phone,
+                                        contentDescription = null,
+                                        tint = extended.accent,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        text = phone,
+                                        style = Typography.MonospaceTechnical,
+                                        fontSize = 13.sp,
+                                        color = extended.textPrimary
+                                    )
+                                }
+                            }
                         }
                     }
 
-                    // Servicios
-                    if (parking.services.isNotEmpty()) {
-                        Card {
+                    // Tariffs Table Card
+                    if (parking.tariffs.isNotEmpty()) {
+                        ParkeoCard(modifier = Modifier.fillMaxWidth()) {
                             Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp)
+                                modifier = Modifier.padding(Dimens.spacingLg),
+                                verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                             ) {
-                                Text("Servicios incluidos", style = MaterialTheme.typography.titleMedium)
-                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = "TABLA DE TARIFAS",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                    color = extended.textTertiary
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
+                                parking.tariffs.forEach { tariff ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = when {
+                                                    tariff.vehicleType.contains("MOTO", ignoreCase = true) -> Icons.Filled.TwoWheeler
+                                                    tariff.vehicleType.contains("CAMION", ignoreCase = true) -> Icons.Filled.LocalShipping
+                                                    else -> Icons.Filled.DirectionsCar
+                                                },
+                                                contentDescription = null,
+                                                tint = extended.textSecondary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                text = "${tariff.vehicleType} • ${tariff.tariffType}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = extended.textPrimary
+                                            )
+                                        }
+
+                                        Text(
+                                            text = "S/ ${String.format("%.2f", tariff.price)}",
+                                            style = Typography.MonospaceTechnical,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = extended.accent
+                                        )
+                                    }
+                                    HorizontalDivider(
+                                        color = extended.borderSubtle,
+                                        thickness = Dimens.borderHairline
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Services Included Card
+                    if (parking.services.isNotEmpty()) {
+                        ParkeoCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier.padding(Dimens.spacingLg),
+                                verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                            ) {
+                                Text(
+                                    text = "SERVICIOS INCLUIDOS",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                    color = extended.textTertiary
+                                )
+
+                                Spacer(Modifier.height(4.dp))
+
                                 parking.services.forEach { service ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(vertical = 4.dp)
+                                        modifier = Modifier.padding(vertical = 3.dp)
                                     ) {
                                         Icon(
-                                            Icons.Filled.CheckCircle,
-                                            null,
-                                            tint = MaterialTheme.colorScheme.primary,
+                                            imageVector = Icons.Filled.CheckCircle,
+                                            contentDescription = null,
+                                            tint = extended.accent,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(Modifier.width(8.dp))
-                                        Text(service.name, style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            text = service.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = extended.textPrimary
+                                        )
                                     }
                                 }
                             }
                         }
                     }
 
-                    Spacer(Modifier.height(80.dp))
+                    Spacer(Modifier.height(32.dp))
                 }
             }
         }

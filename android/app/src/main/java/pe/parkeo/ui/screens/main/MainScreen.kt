@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import pe.parkeo.ui.components.ParkeoBottomBar
+import pe.parkeo.ui.components.ParkeoBottomNavItem
+import pe.parkeo.ui.components.ParkeoLoadingView
 import pe.parkeo.ui.screens.admin.AdminDashboardScreen
 import pe.parkeo.ui.screens.admin.AdminParkingLotsScreen
 import pe.parkeo.ui.screens.admin.AdminUsersScreen
@@ -19,13 +22,8 @@ import pe.parkeo.ui.screens.operator.OperatorSpacesScreen
 import pe.parkeo.ui.screens.profile.ProfileScreen
 import pe.parkeo.ui.screens.reservation.ReservationsScreen
 import pe.parkeo.ui.screens.vehicles.VehiclesScreen
+import pe.parkeo.ui.theme.ParkeoTheme
 import pe.parkeo.ui.viewmodel.*
-
-private data class NavItem(
-    val title: String,
-    val icon: ImageVector,
-    val selectedIcon: ImageVector = icon
-)
 
 @Composable
 fun MainScreen(
@@ -40,13 +38,14 @@ fun MainScreen(
     onLogout: () -> Unit
 ) {
     val userProfile by authViewModel.userProfile.collectAsState()
+    val extended = ParkeoTheme.colors
 
     if (userProfile == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = androidx.compose.ui.Alignment.Center
+            contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator()
+            ParkeoLoadingView(message = "Cargando perfil...")
         }
         return
     }
@@ -59,23 +58,23 @@ fun MainScreen(
     val items = remember(isAdmin, isOperator) {
         when {
             isAdmin -> listOf(
-                NavItem("Métricas", Icons.Filled.Dashboard),
-                NavItem("Cocheras", Icons.Filled.LocalParking),
-                NavItem("Usuarios", Icons.Filled.Group),
-                NavItem("Explorar", Icons.Filled.Map),
-                NavItem("Perfil", Icons.Filled.Person)
+                ParkeoBottomNavItem("Métricas", Icons.Filled.Dashboard),
+                ParkeoBottomNavItem("Cocheras", Icons.Filled.LocalParking),
+                ParkeoBottomNavItem("Usuarios", Icons.Filled.Group),
+                ParkeoBottomNavItem("Explorar", Icons.Filled.Map),
+                ParkeoBottomNavItem("Perfil", Icons.Filled.Person)
             )
             isOperator -> listOf(
-                NavItem("Espacios", Icons.Filled.GridView),
-                NavItem("Reservas", Icons.Filled.BookmarkBorder),
-                NavItem("Explorar", Icons.Filled.Map),
-                NavItem("Perfil", Icons.Filled.Person)
+                ParkeoBottomNavItem("Espacios", Icons.Filled.GridView),
+                ParkeoBottomNavItem("Reservas", Icons.Filled.BookmarkBorder),
+                ParkeoBottomNavItem("Explorar", Icons.Filled.Map),
+                ParkeoBottomNavItem("Perfil", Icons.Filled.Person)
             )
             else -> listOf(
-                NavItem("Explorar", Icons.Filled.Map),
-                NavItem("Reservas", Icons.Filled.BookmarkBorder),
-                NavItem("Vehículos", Icons.Filled.DirectionsCar),
-                NavItem("Perfil", Icons.Filled.Person)
+                ParkeoBottomNavItem("Explorar", Icons.Filled.Map),
+                ParkeoBottomNavItem("Reservas", Icons.Filled.BookmarkBorder),
+                ParkeoBottomNavItem("Vehículos", Icons.Filled.DirectionsCar),
+                ParkeoBottomNavItem("Perfil", Icons.Filled.Person)
             )
         }
     }
@@ -95,17 +94,13 @@ fun MainScreen(
     }
 
     Scaffold(
+        containerColor = extended.background,
         bottomBar = {
-            NavigationBar {
-                items.forEachIndexed { index, item ->
-                    NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = selectedIndex == index,
-                        onClick = { selectedIndex = index }
-                    )
-                }
-            }
+            ParkeoBottomBar(
+                items = items,
+                selectedIndex = selectedIndex,
+                onItemSelected = { selectedIndex = it }
+            )
         }
     ) { paddingValues ->
         Box(

@@ -1,96 +1,113 @@
 package pe.parkeo.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import pe.parkeo.data.remote.dto.ParkingLotDto
 import pe.parkeo.ui.theme.*
 
 @Composable
 fun ParkingCard(
     parking: ParkingLotDto,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    val extended = ParkeoTheme.colors
+
+    val (badgeText, badgeVariant) = when {
+        !parking.isOpen -> "Cerrado" to BadgeVariant.Closed
+        parking.availableSpaces == 0 -> "Completo" to BadgeVariant.Occupied
+        parking.availableSpaces <= 3 -> "${parking.availableSpaces} libres" to BadgeVariant.Reserved
+        else -> "${parking.availableSpaces} libres" to BadgeVariant.Available
+    }
+
+    ParkeoCard(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(16.dp),
+        accentStripeColor = if (parking.isOpen && parking.availableSpaces > 0) extended.accent else null
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = parking.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = parking.district ?: parking.address,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-
-                val (chipColor, chipText) = when {
-                    !parking.isOpen -> Pair(ParkeoGray500, "Cerrado")
-                    parking.availableSpaces == 0 -> Pair(ParkeoRed500, "Lleno")
-                    parking.availableSpaces <= 3 -> Pair(ParkeoAmber500, "Pocos")
-                    else -> Pair(ParkeoGreen500, "Disponible")
-                }
-
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(chipText, style = MaterialTheme.typography.labelSmall) },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = chipColor.copy(alpha = 0.15f),
-                        labelColor = chipColor
-                    )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(
+                    text = parking.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = extended.textPrimary
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = parking.district ?: parking.address,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = extended.textSecondary
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
+            ParkeoBadge(
+                text = badgeText,
+                variant = badgeVariant
+            )
+        }
 
+        Spacer(Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.LocalParking,
-                        null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "${parking.availableSpaces}/${parking.totalCapacity} espacios",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                parking.distance?.let {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.DirectionsCar,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = extended.accent
+                )
+                Text(
+                    text = "${parking.availableSpaces}/${parking.totalCapacity} espacios",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonospaceTechnical.fontFamily),
+                    fontWeight = FontWeight.SemiBold,
+                    color = extended.textPrimary
+                )
+            }
+
+            parking.distance?.let { dist ->
+                Surface(
+                    shape = ParkeoTagShape,
+                    color = extended.surface2,
+                    border = androidx.compose.foundation.BorderStroke(Dimens.borderHairline, extended.border)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Icon(
-                            Icons.Filled.NearMe,
-                            null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.secondary
+                            imageVector = Icons.Filled.NearMe,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = extended.textSecondary
                         )
-                        Spacer(Modifier.width(4.dp))
                         Text(
-                            "${String.format("%.1f", it)} km",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "${String.format("%.1f", dist)} km",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = extended.textSecondary
                         )
                     }
                 }
