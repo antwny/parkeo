@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Stylized Parkeo 'P' Monogram -->
+    <path
+        android:fillColor="#CCFF00"
+        android:pathData="M38,30 L66,30 C76,30 84,37 84,47 C84,57 76,64 66,64 L50,64 L50,90 L38,90 Z M50,42 L50,52 L64,52 C69,52 72,49 72,47 C72,45 69,42 64,42 Z" />
+
+    <!-- Signature Accent Dot -->
+    <path
+        android:fillColor="#CCFF00"
+        android:pathData="M84,82 A6,6 0 1,0 84,94 A6,6 0 1,0 84,82 Z" />
+</vector>

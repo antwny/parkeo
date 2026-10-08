@@ -25,7 +25,9 @@ data class ParkingLotDto(
     val services: List<String> = emptyList(),
     @SerialName("averageRating") val averageRating: Double? = null,
     @SerialName("rating") val ratingVal: Double? = null,
-    @SerialName("ratingCount") val ratingCount: Int = 0
+    @SerialName("ratingCount") val ratingCount: Int = 0,
+    @SerialName("operatorId") val operatorId: Long? = null,
+    @SerialName("operatorName") val operatorName: String? = null
 ) {
     val totalCapacity: Int get() = if (totalSpaces > 0) totalSpaces else (totalCapacityVal ?: 0)
     val distance: Double? get() = distanceKm ?: distanceVal

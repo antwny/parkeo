@@ -2,6 +2,8 @@
 <resources>
     <style name="Theme.Parkeo" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/parkeo_obsidian</item>
+        <item name="android:windowSplashScreenBackground">@color/parkeo_obsidian</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_branding</item>
         <item name="android:statusBarColor">@color/parkeo_obsidian</item>
         <item name="android:navigationBarColor">@color/parkeo_obsidian</item>
     </style>

@@ -258,6 +258,28 @@ private fun AdminParkingLotCard(
                 }
             }
 
+            Spacer(Modifier.height(8.dp))
+
+            // Assigned Operator Status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Badge,
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                    tint = if (lot.operatorName != null) extended.accent else extended.signalAmber
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = if (lot.operatorName != null) "Operador: ${lot.operatorName}" else "Sin operador asignado",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (lot.operatorName != null) extended.textSecondary else extended.signalAmber,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
             HorizontalDivider(
                 color = extended.borderSubtle,
                 thickness = Dimens.borderHairline,

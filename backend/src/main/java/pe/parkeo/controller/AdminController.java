@@ -81,6 +81,16 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.ok(parkingLotService.updateLotStatus(id, isOpen, isActive)));
     }
 
+    @PutMapping("/parking-lots/{id}/operator")
+    @Operation(summary = "Asignar operador a un estacionamiento")
+    public ResponseEntity<ApiResponse<ParkingLotResponse>> assignOperator(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body) {
+        Long operatorId = body.get("operatorId");
+        return ResponseEntity.ok(ApiResponse.ok("Operador asignado exitosamente",
+                parkingLotService.assignOperator(id, operatorId)));
+    }
+
     @DeleteMapping("/parking-lots/{id}")
     @Operation(summary = "Desactivar estacionamiento (soft delete)")
     public ResponseEntity<ApiResponse<Void>> deactivateParkingLot(@PathVariable Long id) {

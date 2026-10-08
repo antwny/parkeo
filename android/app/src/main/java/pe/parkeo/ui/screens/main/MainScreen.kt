@@ -138,8 +138,10 @@ fun MainScreen(
                         4 -> ProfileScreen(
                             viewModel = authViewModel,
                             onNavigateBack = { selectedIndex = 0 },
-                            onNavigateToVehicles = { /* Admin profile options */ },
-                            onNavigateToReservations = { selectedIndex = 0 },
+                            onNavigateToDashboard = { selectedIndex = 0 },
+                            onNavigateToParkingLots = { selectedIndex = 1 },
+                            onNavigateToUsers = { selectedIndex = 2 },
+                            onNavigateToExplore = { selectedIndex = 3 },
                             onLogout = onLogout
                         )
                     }
@@ -163,8 +165,9 @@ fun MainScreen(
                         3 -> ProfileScreen(
                             viewModel = authViewModel,
                             onNavigateBack = { selectedIndex = 0 },
-                            onNavigateToVehicles = { },
+                            onNavigateToSpaces = { selectedIndex = 0 },
                             onNavigateToReservations = { selectedIndex = 1 },
+                            onNavigateToExplore = { selectedIndex = 2 },
                             onLogout = onLogout
                         )
                     }
@@ -189,8 +192,9 @@ fun MainScreen(
                         3 -> ProfileScreen(
                             viewModel = authViewModel,
                             onNavigateBack = { selectedIndex = 0 },
-                            onNavigateToVehicles = { selectedIndex = 2 },
+                            onNavigateToExplore = { selectedIndex = 0 },
                             onNavigateToReservations = { selectedIndex = 1 },
+                            onNavigateToVehicles = { selectedIndex = 2 },
                             onLogout = onLogout
                         )
                     }

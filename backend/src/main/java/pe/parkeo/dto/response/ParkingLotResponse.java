@@ -25,6 +25,8 @@ public class ParkingLotResponse {
     private Boolean isActive;
     private Double distanceKm;       // populated when doing nearby search
     private Double averageRating;
+    private Long operatorId;
+    private String operatorName;
     private LocalDateTime createdAt;
 
     public Integer getTotalCapacity() {

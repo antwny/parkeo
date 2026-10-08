@@ -27,8 +27,13 @@ import pe.parkeo.ui.viewmodel.AuthViewModel
 fun ProfileScreen(
     viewModel: AuthViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToVehicles: () -> Unit,
-    onNavigateToReservations: () -> Unit,
+    onNavigateToVehicles: () -> Unit = {},
+    onNavigateToReservations: () -> Unit = {},
+    onNavigateToExplore: () -> Unit = {},
+    onNavigateToSpaces: () -> Unit = {},
+    onNavigateToDashboard: () -> Unit = {},
+    onNavigateToParkingLots: () -> Unit = {},
+    onNavigateToUsers: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val userProfile by viewModel.userProfile.collectAsState()
@@ -114,87 +119,274 @@ fun ProfileScreen(
                 }
             }
 
-            // Admin privileges banner
-            if (isAdmin) {
-                ParkeoCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    accentBorder = true
-                ) {
-                    Column(
-                        modifier = Modifier.padding(Dimens.spacingLg),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+            // Banner contextual por rol
+            when {
+                isAdmin -> {
+                    ParkeoCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        accentBorder = true
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Filled.Shield,
-                                contentDescription = null,
-                                tint = extended.accent,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
+                        Column(
+                            modifier = Modifier.padding(Dimens.spacingLg),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Filled.Shield,
+                                    contentDescription = null,
+                                    tint = extended.accent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Administración Central",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = extended.textPrimary
+                                )
+                            }
                             Text(
-                                text = "Acceso de Administrador",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = extended.textPrimary
+                                text = "Supervisión total de la plataforma: consulta métricas financieras, activa o suspende cocheras y gestiona los accesos de operadores y usuarios.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = extended.textSecondary,
+                                lineHeight = 18.sp
                             )
                         }
-                        Text(
-                            text = "Tienes permisos totales para gestionar cocheras de la red, actualizar estados, supervisar usuarios y consultar métricas globales.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = extended.textSecondary,
-                            lineHeight = 18.sp
-                        )
+                    }
+                }
+                isOperator -> {
+                    ParkeoCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        accentBorder = true
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(Dimens.spacingLg),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Filled.LocalParking,
+                                    contentDescription = null,
+                                    tint = extended.accent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Control de Cochera en Tiempo Real",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = extended.textPrimary
+                                )
+                            }
+                            Text(
+                                text = "Tienes a cargo la verificación de ingresos (Check-In) y salidas (Check-Out) de vehículos, además de la supervisión de la matriz de espacios libres y ocupados.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = extended.textSecondary,
+                                lineHeight = 18.sp
+                            )
+                        }
                     }
                 }
             }
 
-            // Section: Gestión
-            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-                Text(
-                    text = "GESTIÓN",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = extended.textTertiary,
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-                )
+            // Secciones operativas específicas por Rol
+            when {
+                isAdmin -> {
+                    // SECCIÓN ADMIN: GESTIÓN ADMINISTRATIVA
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                        Text(
+                            text = "GESTIÓN ADMINISTRATIVA",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = extended.textTertiary,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
 
-                ProfileOptionTile(
-                    icon = Icons.Filled.DirectionsCar,
-                    title = "Mis vehículos",
-                    onClick = onNavigateToVehicles
-                )
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Analytics,
+                            title = "Dashboard de Métricas",
+                            subtitle = "Recaudación, ocupación y reservas globales",
+                            onClick = onNavigateToDashboard
+                        )
 
-                ProfileOptionTile(
-                    icon = Icons.Filled.BookmarkBorder,
-                    title = "Mis reservas",
-                    onClick = onNavigateToReservations
-                )
-            }
+                        ProfileOptionTile(
+                            icon = Icons.Filled.LocalParking,
+                            title = "Estacionamientos y Cocheras",
+                            subtitle = "Horarios, capacidad y operadores asignados",
+                            onClick = onNavigateToParkingLots
+                        )
 
-            // Section: Aplicación
-            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-                Text(
-                    text = "APLICACIÓN",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = extended.textTertiary,
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-                )
+                        ProfileOptionTile(
+                            icon = Icons.Filled.People,
+                            title = "Gestión de Usuarios y Roles",
+                            subtitle = "Conductores, operadores y administradores",
+                            onClick = onNavigateToUsers
+                        )
 
-                ProfileOptionTile(
-                    icon = Icons.Filled.Security,
-                    title = "Seguridad y privacidad",
-                    onClick = {}
-                )
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Explore,
+                            title = "Vista de Exploración de Cocheras",
+                            subtitle = "Visualizar el mapa y tarifas públicas",
+                            onClick = onNavigateToExplore
+                        )
+                    }
 
-                ProfileOptionTile(
-                    icon = Icons.Filled.Info,
-                    title = "Acerca de Parkeo v1.0",
-                    onClick = {}
-                )
+                    // SECCIÓN ADMIN: INFRAESTRUCTURA
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                        Text(
+                            text = "INFRAESTRUCTURA Y SISTEMA",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = extended.textTertiary,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Dns,
+                            title = "Arquitectura del Sistema",
+                            subtitle = "Spring Boot 3.2.0 • MySQL 8.0 • JWT Auth",
+                            onClick = {}
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Security,
+                            title = "Auditoría y Políticas de Seguridad",
+                            subtitle = "Registros de acceso y roles protegidos",
+                            onClick = {}
+                        )
+                    }
+                }
+
+                isOperator -> {
+                    // SECCIÓN OPERADOR: OPERACIÓN DE COCHERA
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                        Text(
+                            text = "OPERACIONES DE COCHERA",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = extended.textTertiary,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.GridView,
+                            title = "Matriz Visual de Espacios",
+                            subtitle = "Monitorear espacios libres, ocupados y reservados",
+                            onClick = onNavigateToSpaces
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.ConfirmationNumber,
+                            title = "Control de Reservas (Ingresos y Salidas)",
+                            subtitle = "Validar código PKO y registrar Check-In / Check-Out",
+                            onClick = onNavigateToReservations
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Explore,
+                            title = "Explorar Cocheras de la Red",
+                            subtitle = "Consultar tarifas y disponibilidad de otras sedes",
+                            onClick = onNavigateToExplore
+                        )
+                    }
+
+                    // SECCIÓN OPERADOR: COCHERAS ASIGNADAS Y HERRAMIENTAS
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                        Text(
+                            text = "COCHERAS A TU CARGO",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = extended.textTertiary,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Business,
+                            title = "Cocheras Asignadas en Lima",
+                            subtitle = "Miraflores, San Isidro, Surco, Barranco, Lince, San Borja",
+                            onClick = onNavigateToSpaces
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Security,
+                            title = "Seguridad de Acceso",
+                            subtitle = "Sesión operativa encriptada",
+                            onClick = {}
+                        )
+                    }
+                }
+
+                else -> {
+                    // SECCIÓN CLIENTE: MI CUENTA Y VEHÍCULOS
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                        Text(
+                            text = "MI CUENTA Y VEHÍCULOS",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = extended.textTertiary,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.DirectionsCar,
+                            title = "Mis vehículos registrados",
+                            subtitle = "Autos, motos y camionetas asociados",
+                            onClick = onNavigateToVehicles
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.BookmarkBorder,
+                            title = "Mis reservas y tickets",
+                            subtitle = "Próximas reservas, historial y comprobantes",
+                            onClick = onNavigateToReservations
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Search,
+                            title = "Buscar y reservar cochera",
+                            subtitle = "Encuentra estacionamientos cercanos por GPS",
+                            onClick = onNavigateToExplore
+                        )
+                    }
+
+                    // SECCIÓN CLIENTE: PREFERENCIAS Y SOPORTE
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                        Text(
+                            text = "PREFERENCIAS Y SOPORTE",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = extended.textTertiary,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.NotificationsActive,
+                            title = "Recordatorios de reserva",
+                            subtitle = "Alertas locales 15 min antes de tu llegada",
+                            onClick = {}
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Security,
+                            title = "Seguridad y privacidad",
+                            subtitle = "Tus datos personales y vehículos protegidos",
+                            onClick = {}
+                        )
+
+                        ProfileOptionTile(
+                            icon = Icons.Filled.Info,
+                            title = "Acerca de Parkeo v1.0",
+                            subtitle = "Movilidad urbana en tiempo real",
+                            onClick = {}
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -253,6 +445,7 @@ fun ProfileScreen(
 private fun ProfileOptionTile(
     icon: ImageVector,
     title: String,
+    subtitle: String? = null,
     onClick: () -> Unit
 ) {
     val extended = ParkeoTheme.colors
@@ -270,16 +463,26 @@ private fun ProfileOptionTile(
                 imageVector = icon,
                 contentDescription = null,
                 tint = extended.accent,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(22.dp)
             )
             Spacer(Modifier.width(14.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = extended.textPrimary,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = extended.textPrimary
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = extended.textSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+            }
             Icon(
                 imageVector = Icons.Filled.ChevronRight,
                 contentDescription = null,

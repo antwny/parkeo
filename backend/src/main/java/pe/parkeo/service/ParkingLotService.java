@@ -12,8 +12,10 @@ import pe.parkeo.entity.Schedule;
 import pe.parkeo.entity.Tariff;
 import pe.parkeo.exception.ResourceNotFoundException;
 import pe.parkeo.repository.ParkingLotRepository;
+import pe.parkeo.entity.User;
 import pe.parkeo.repository.ScheduleRepository;
 import pe.parkeo.repository.TariffRepository;
+import pe.parkeo.repository.UserRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,6 +27,7 @@ public class ParkingLotService {
     private final ParkingLotRepository parkingLotRepository;
     private final ScheduleRepository scheduleRepository;
     private final TariffRepository tariffRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public Page<ParkingLotResponse> getAllActive(Pageable pageable) {
@@ -80,9 +83,28 @@ public class ParkingLotService {
         return mapToResponse(parkingLotRepository.save(lot));
     }
 
+    @Transactional
+    public ParkingLotResponse assignOperator(Long lotId, Long operatorId) {
+        ParkingLot lot = parkingLotRepository.findById(lotId)
+                .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", lotId));
+        if (operatorId != null) {
+            User operator = userRepository.findById(operatorId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Usuario Operador", operatorId));
+            lot.setOperator(operator);
+        } else {
+            lot.setOperator(null);
+        }
+        return mapToResponse(parkingLotRepository.save(lot));
+    }
+
     // ─── Mapping ──────────────────────────────────────────────────────────────
 
     private ParkingLotResponse mapToResponse(ParkingLot lot) {
+        Long operatorId = lot.getOperator() != null ? lot.getOperator().getId() : null;
+        String operatorName = lot.getOperator() != null 
+                ? (lot.getOperator().getFirstName() + " " + lot.getOperator().getLastName()).trim() 
+                : null;
+
         return ParkingLotResponse.builder()
                 .id(lot.getId())
                 .name(lot.getName())
@@ -96,6 +118,8 @@ public class ParkingLotService {
                 .imageUrl(lot.getImageUrl())
                 .isOpen(lot.getIsOpen())
                 .isActive(lot.getIsActive())
+                .operatorId(operatorId)
+                .operatorName(operatorName)
                 .createdAt(lot.getCreatedAt())
                 .build();
     }

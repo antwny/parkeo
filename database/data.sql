@@ -57,11 +57,13 @@ INSERT INTO users (id, email, password_hash, first_name, last_name, phone, is_ac
 (3, 'cliente@parkeo.pe',        '$2a$10$lsgskzIZh6LpCawrQIgQmOOkTKAssUshrUw3ahlu1CV1u1HybIsSq', 'María',   'González', '+51 987 654 321', TRUE, TRUE),
 (4, 'juan.perez@parkeo.pe',     '$2a$10$lsgskzIZh6LpCawrQIgQmOOkTKAssUshrUw3ahlu1CV1u1HybIsSq', 'Juan',    'Pérez',    '+51 987 123 456', TRUE, TRUE),
 (5, 'sofia.mendez@parkeo.pe',   '$2a$10$lsgskzIZh6LpCawrQIgQmOOkTKAssUshrUw3ahlu1CV1u1HybIsSq', 'Sofía',   'Méndez',   '+51 987 222 333', TRUE, TRUE),
-(6, 'roberto.silva@parkeo.pe',  '$2a$10$lsgskzIZh6LpCawrQIgQmOOkTKAssUshrUw3ahlu1CV1u1HybIsSq', 'Roberto', 'Silva',    '+51 987 444 555', TRUE, FALSE);
+(6, 'roberto.silva@parkeo.pe',  '$2a$10$lsgskzIZh6LpCawrQIgQmOOkTKAssUshrUw3ahlu1CV1u1HybIsSq', 'Roberto', 'Silva',    '+51 987 444 555', TRUE, FALSE),
+(11, 'operador2@parkeo.pe',      '$2a$10$lsgskzIZh6LpCawrQIgQmOOkTKAssUshrUw3ahlu1CV1u1HybIsSq', 'Jorge',   'Soto',     '+51 987 000 111', TRUE, TRUE);
 
 INSERT INTO user_roles (user_id, role_id) VALUES
 (1, 3),
 (2, 2),
+(11, 2),
 (3, 1),
 (4, 1),
 (5, 1),
@@ -289,8 +291,13 @@ INSERT INTO tariffs (parking_lot_id, vehicle_type_id, tariff_type, price, minimu
 -- =============================================================================
 INSERT INTO operator_parking_assignments (operator_id, parking_lot_id, assigned_by, is_active) VALUES
 (2, 1, 1, TRUE),
+(2, 2, 1, TRUE),
 (2, 3, 1, TRUE),
-(2, 4, 1, TRUE);
+(2, 4, 1, TRUE),
+(2, 5, 1, TRUE),
+(2, 6, 1, TRUE);
+
+UPDATE parking_lots SET operator_id = 2 WHERE is_active = TRUE;
 
 -- =============================================================================
 -- RESERVATIONS (6 reservas con distintos estados -> ids 1 a 6)
