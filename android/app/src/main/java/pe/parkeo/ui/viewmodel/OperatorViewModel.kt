@@ -127,6 +127,58 @@ class OperatorViewModel(
         }
     }
 
+    fun checkIn(reservationId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            when (val result = operatorRepository.checkIn(reservationId)) {
+                is Result.Success -> {
+                    val updatedList = _uiState.value.reservations.map {
+                        if (it.id == reservationId) result.data else it
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            reservations = updatedList,
+                            successMessage = "¡Ingreso registrado exitosamente!"
+                        )
+                    }
+                    // Actualizar espacios en vivo
+                    _uiState.value.selectedLot?.id?.let { loadSpacesAndReservations(it) }
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(isLoading = false, error = result.message) }
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun checkOut(reservationId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            when (val result = operatorRepository.checkOut(reservationId)) {
+                is Result.Success -> {
+                    val updatedList = _uiState.value.reservations.map {
+                        if (it.id == reservationId) result.data else it
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            reservations = updatedList,
+                            successMessage = "¡Salida registrada exitosamente!"
+                        )
+                    }
+                    // Actualizar espacios en vivo
+                    _uiState.value.selectedLot?.id?.let { loadSpacesAndReservations(it) }
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(isLoading = false, error = result.message) }
+                }
+                else -> {}
+            }
+        }
+    }
+
     fun setSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
     }

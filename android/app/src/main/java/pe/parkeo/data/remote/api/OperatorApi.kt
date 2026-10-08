@@ -26,4 +26,14 @@ interface OperatorApi {
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 50
     ): Response<ApiResponseDto<PageDto<ReservationDto>>>
+
+    @PATCH("api/operator/reservations/{id}/check-in")
+    suspend fun checkInReservation(
+        @Path("id") id: Long
+    ): Response<ApiResponseDto<ReservationDto>>
+
+    @PATCH("api/operator/reservations/{id}/check-out")
+    suspend fun checkOutReservation(
+        @Path("id") id: Long
+    ): Response<ApiResponseDto<ReservationDto>>
 }

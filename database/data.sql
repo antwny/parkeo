@@ -274,6 +274,7 @@ INSERT INTO tariffs (parking_lot_id, vehicle_type_id, tariff_type, price, minimu
 -- Barranco
 (4,1,'HOURLY',4.00,30),(4,1,'DAILY',30.00,60),(4,1,'MONTHLY',220.00,60),
 (4,2,'HOURLY',1.50,30),(4,2,'DAILY',12.00,30),(4,2,'MONTHLY',90.00,30),
+(4,3,'HOURLY',6.00,30),(4,3,'DAILY',45.00,60),(4,3,'MONTHLY',320.00,60),
 -- Lince
 (5,1,'HOURLY',3.00,30),(5,1,'DAILY',22.00,60),(5,1,'MONTHLY',180.00,60),
 (5,2,'HOURLY',1.50,30),(5,2,'DAILY',10.00,30),(5,2,'MONTHLY',80.00,30),
@@ -287,6 +288,7 @@ INSERT INTO tariffs (parking_lot_id, vehicle_type_id, tariff_type, price, minimu
 -- OPERATOR PARKING ASSIGNMENTS
 -- =============================================================================
 INSERT INTO operator_parking_assignments (operator_id, parking_lot_id, assigned_by, is_active) VALUES
+(2, 1, 1, TRUE),
 (2, 3, 1, TRUE),
 (2, 4, 1, TRUE);
 

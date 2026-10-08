@@ -1,0 +1,45 @@
+================================================================================
+  GUÍA RÁPIDA: CÓMO LEVANTAR PARKEO EN TU CELULAR (SIN ANDROID STUDIO NI EMULADOR)
+================================================================================
+
+Requisitos:
+- Celular conectado por cable USB con "Depuración por USB" activada.
+
+--------------------------------------------------------------------------------
+PASO 1: ABRIR LA APP EN TU CELULAR (YA INSTALADA)
+--------------------------------------------------------------------------------
+Abre una terminal y ejecuta estos comandos:
+
+# 1. Configurar la ruta de ADB
+export PATH=$PATH:$HOME/Android/Sdk/platform-tools
+
+# 2. Conectar el backend de tu PC al celular (puerto 8080)
+adb reverse tcp:8080 tcp:8080
+
+# 3. Lanzar la app Parkeo en la pantalla de tu celular
+adb shell am start -n pe.parkeo/.MainActivity
+
+
+--------------------------------------------------------------------------------
+PASO 2: LEVANTAR EL BACKEND (SI NO ESTÁ CORRIENDO)
+--------------------------------------------------------------------------------
+En otra terminal o pestaña:
+
+cd ~/Documentos/parkeo/backend
+/home/antwny/.sdkman/candidates/maven/current/bin/mvn spring-boot:run
+
+
+--------------------------------------------------------------------------------
+PASO RÁPIDO (TODO EN UN SOLO COMANDO):
+--------------------------------------------------------------------------------
+Copia y pega esto en tu terminal para sincronizar y abrir la app al instante:
+
+export PATH=$PATH:$HOME/Android/Sdk/platform-tools && adb reverse tcp:8080 tcp:8080 && adb shell am start -n pe.parkeo/.MainActivity
+
+
+--------------------------------------------------------------------------------
+EXTRA: SI HICISTE CAMBIOS EN EL CÓDIGO Y QUIERES RECOMPILAR E INSTALAR:
+--------------------------------------------------------------------------------
+cd ~/Documentos/parkeo/android
+./gradlew installDebug
+export PATH=$PATH:$HOME/Android/Sdk/platform-tools && adb shell am start -n pe.parkeo/.MainActivity

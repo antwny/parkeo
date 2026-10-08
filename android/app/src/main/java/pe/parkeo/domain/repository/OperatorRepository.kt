@@ -8,4 +8,6 @@ interface OperatorRepository {
     suspend fun getSpaces(lotId: Long): Result<List<ParkingSpaceDto>>
     suspend fun updateSpaceStatus(spaceId: Long, status: String, notes: String? = null): Result<ParkingSpaceDto>
     suspend fun getReservations(lotId: Long, status: String? = null): Result<List<ReservationDto>>
+    suspend fun checkIn(reservationId: Long): Result<ReservationDto>
+    suspend fun checkOut(reservationId: Long): Result<ReservationDto>
 }
