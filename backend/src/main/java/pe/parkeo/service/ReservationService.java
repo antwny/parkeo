@@ -36,12 +36,13 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final ParkingSpaceRepository parkingSpaceRepository;
+    private final ParkingLotRepository parkingLotRepository;
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
     private final AvailabilityService availabilityService;
 
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
-    private static final int MIN_MINUTES = 30;
+    private static final int MIN_MINUTES = 15;
     private static final int MAX_HOURS = 24;
     private static final int MAX_DAYS_AHEAD = 30;
 
@@ -125,7 +126,7 @@ public class ReservationService {
             throw new ValidationException("La hora de fin debe ser posterior a la hora de inicio");
         }
         LocalDateTime now = LocalDateTime.now(LIMA);
-        if (start.isBefore(now.minusMinutes(5))) {
+        if (start.isBefore(now.minusMinutes(15))) {
             throw new ValidationException("La hora de inicio ya pasó");
         }
         if (start.isAfter(now.plusDays(MAX_DAYS_AHEAD))) {
@@ -249,6 +250,78 @@ public class ReservationService {
 
         reservation = reservationRepository.save(reservation);
         log.info("Reservation {} cancelled by user {}", reservationId, userId);
+        return mapToResponse(reservation);
+    }
+
+    // ─── Check-In / Check-Out (Operador) ────────────────────────────────────
+
+    @Transactional
+    public ReservationResponse checkInReservation(Long reservationId, Long operatorId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
+
+        if (reservation.getStatus() != ReservationStatus.PENDING
+                && reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            throw new ValidationException(
+                    "Solo se puede registrar ingreso en reservas pendientes o confirmadas (estado actual: "
+                            + reservation.getStatus() + ")");
+        }
+
+        reservation.setStatus(ReservationStatus.ACTIVE);
+        reservation.setCheckedInAt(LocalDateTime.now(LIMA));
+
+        // Actualizar estado del espacio a OCCUPIED
+        ParkingSpace space = reservation.getParkingSpace();
+        if (space != null) {
+            space.setStatus(SpaceStatus.OCCUPIED);
+            parkingSpaceRepository.save(space);
+        }
+
+        // Decrementar espacios disponibles en la cochera si es mayor a 0
+        ParkingLot lot = reservation.getParkingLot();
+        if (lot != null && lot.getAvailableSpaces() != null && lot.getAvailableSpaces() > 0) {
+            lot.setAvailableSpaces(lot.getAvailableSpaces() - 1);
+            parkingLotRepository.save(lot);
+        }
+
+        reservation = reservationRepository.save(reservation);
+        log.info("Reservation {} checked-in by operator {}", reservationId, operatorId);
+        return mapToResponse(reservation);
+    }
+
+    @Transactional
+    public ReservationResponse checkOutReservation(Long reservationId, Long operatorId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
+
+        if (reservation.getStatus() != ReservationStatus.ACTIVE) {
+            throw new ValidationException(
+                    "Solo se puede registrar salida en reservas activas (estado actual: "
+                            + reservation.getStatus() + ")");
+        }
+
+        reservation.setStatus(ReservationStatus.COMPLETED);
+        reservation.setCheckedOutAt(LocalDateTime.now(LIMA));
+
+        // Liberar el espacio a AVAILABLE
+        ParkingSpace space = reservation.getParkingSpace();
+        if (space != null) {
+            space.setStatus(SpaceStatus.AVAILABLE);
+            parkingSpaceRepository.save(space);
+        }
+
+        // Incrementar espacios disponibles en la cochera
+        ParkingLot lot = reservation.getParkingLot();
+        if (lot != null && lot.getAvailableSpaces() != null) {
+            int total = (lot.getTotalSpaces() != null) ? lot.getTotalSpaces() : 999;
+            if (lot.getAvailableSpaces() < total) {
+                lot.setAvailableSpaces(lot.getAvailableSpaces() + 1);
+                parkingLotRepository.save(lot);
+            }
+        }
+
+        reservation = reservationRepository.save(reservation);
+        log.info("Reservation {} checked-out by operator {}", reservationId, operatorId);
         return mapToResponse(reservation);
     }
 

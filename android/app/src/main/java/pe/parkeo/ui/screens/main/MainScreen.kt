@@ -20,6 +20,7 @@ import pe.parkeo.ui.screens.admin.AdminDashboardScreen
 import pe.parkeo.ui.screens.admin.AdminParkingLotsScreen
 import pe.parkeo.ui.screens.admin.AdminUsersScreen
 import pe.parkeo.ui.screens.home.HomeScreen
+import pe.parkeo.ui.screens.operator.OperatorReservationsScreen
 import pe.parkeo.ui.screens.operator.OperatorSpacesScreen
 import pe.parkeo.ui.screens.profile.ProfileScreen
 import pe.parkeo.ui.screens.reservation.ReservationsScreen
@@ -149,8 +150,8 @@ fun MainScreen(
                             viewModel = operatorViewModel,
                             onNavigateToReservations = { selectedIndex = 1 }
                         )
-                        1 -> ReservationsScreen(
-                            viewModel = reservationViewModel,
+                        1 -> OperatorReservationsScreen(
+                            viewModel = operatorViewModel,
                             onNavigateBack = { selectedIndex = 0 }
                         )
                         2 -> HomeScreen(

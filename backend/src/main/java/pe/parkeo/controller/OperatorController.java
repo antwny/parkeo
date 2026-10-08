@@ -102,6 +102,26 @@ public class OperatorController {
                 reservationService.getReservationsByLot(parkingLotId, status, pageable)));
     }
 
+    @PatchMapping("/reservations/{id}/check-in")
+    @Operation(summary = "Registrar ingreso del vehículo a la cochera")
+    public ResponseEntity<ApiResponse<ReservationResponse>> checkIn(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id) {
+        Long operatorId = resolveUserId(userDetails);
+        ReservationResponse response = reservationService.checkInReservation(id, operatorId);
+        return ResponseEntity.ok(ApiResponse.ok("Ingreso registrado exitosamente", response));
+    }
+
+    @PatchMapping("/reservations/{id}/check-out")
+    @Operation(summary = "Registrar salida del vehículo de la cochera")
+    public ResponseEntity<ApiResponse<ReservationResponse>> checkOut(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id) {
+        Long operatorId = resolveUserId(userDetails);
+        ReservationResponse response = reservationService.checkOutReservation(id, operatorId);
+        return ResponseEntity.ok(ApiResponse.ok("Salida registrada exitosamente", response));
+    }
+
     private Long resolveUserId(UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userDetails.getUsername()));

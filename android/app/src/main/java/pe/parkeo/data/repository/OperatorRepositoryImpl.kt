@@ -38,7 +38,39 @@ class OperatorRepositoryImpl(
         val response = operatorApi.getReservations(lotId, status)
         if (response.isSuccessful && response.body()?.success == true) {
             response.body()!!.data?.content ?: emptyList()
-        } else throw Exception(response.body()?.message ?: "Error al obtener reservas")
+        } else throw Exception(extractError(response, "Error al obtener reservas"))
+    }
+
+    override suspend fun checkIn(reservationId: Long): Result<ReservationDto> = safeApiCall {
+        val response = operatorApi.checkInReservation(reservationId)
+        if (response.isSuccessful && response.body()?.success == true) {
+            response.body()!!.data!!
+        } else throw Exception(extractError(response, "Error al registrar ingreso"))
+    }
+
+    override suspend fun checkOut(reservationId: Long): Result<ReservationDto> = safeApiCall {
+        val response = operatorApi.checkOutReservation(reservationId)
+        if (response.isSuccessful && response.body()?.success == true) {
+            response.body()!!.data!!
+        } else throw Exception(extractError(response, "Error al registrar salida"))
+    }
+
+    private fun extractError(response: retrofit2.Response<*>, defaultMsg: String): String {
+        return try {
+            val raw = response.errorBody()?.string()
+            if (!raw.isNullOrBlank()) {
+                val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                val obj = json.parseToJsonElement(raw)
+                val msg = obj.let {
+                    (it as? kotlinx.serialization.json.JsonObject)?.get("message")?.let { elem ->
+                        (elem as? kotlinx.serialization.json.JsonPrimitive)?.content
+                    }
+                }
+                msg ?: defaultMsg
+            } else defaultMsg
+        } catch (e: Exception) {
+            response.message().ifBlank { defaultMsg }
+        }
     }
 
     private suspend fun <T> safeApiCall(call: suspend () -> T): Result<T> {
