@@ -36,6 +36,11 @@ public class ApiResponse<T> {
         return response;
     }
 
+    /** Respuesta para recursos creados (se usa junto con HTTP 201). */
+    public static <T> ApiResponse<T> created(String message, T data) {
+        return ok(message, data);
+    }
+
     public static <T> ApiResponse<T> error(String message) {
         ApiResponse<T> response = new ApiResponse<>();
         response.setSuccess(false);

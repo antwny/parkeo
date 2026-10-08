@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,7 +25,10 @@ import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.ParkingDetailViewModel
 import pe.parkeo.ui.viewmodel.ReservationViewModel
 import pe.parkeo.ui.viewmodel.VehicleViewModel
+import pe.parkeo.util.ReminderScheduler
+import pe.parkeo.util.RequestNotificationPermission
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -40,15 +44,24 @@ fun ReservationCreateScreen(
     val vehicleState by vehicleViewModel.uiState.collectAsState()
     val reservationState by reservationViewModel.uiState.collectAsState()
     val extended = ParkeoTheme.colors
+    val context = LocalContext.current
+
+    // Pide el permiso de notificaciones (Android 13+) para los recordatorios de la reserva
+    RequestNotificationPermission()
 
     var selectedVehicleId by remember { mutableStateOf<Long?>(null) }
     var durationHours by remember { mutableIntStateOf(2) }
 
+    // Hora de Lima, sin segundos ni nanosegundos: el backend espera yyyy-MM-dd'T'HH:mm:ss
     val startTime = remember {
-        LocalDateTime.now().plusHours(1).withMinute(0).withSecond(0)
+        LocalDateTime.now(ZoneId.of("America/Lima"))
+            .plusHours(1)
+            .withMinute(0)
+            .withSecond(0)
+            .withNano(0)
     }
     val endTime = startTime.plusHours(durationHours.toLong())
-    val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
 
     LaunchedEffect(parkingId) {
         parkingViewModel.loadParkingLot(parkingId)
@@ -63,6 +76,16 @@ fun ReservationCreateScreen(
 
     LaunchedEffect(reservationState.reservationCreated) {
         if (reservationState.reservationCreated) {
+            // Recordatorios locales: 15 min antes del inicio y 10 min antes del fin
+            reservationState.currentReservation?.let { r ->
+                ReminderScheduler.schedule(
+                    context = context,
+                    reservationId = r.id,
+                    parkingLotName = r.parkingLotName,
+                    startIso = r.startTime,
+                    endIso = r.endTime
+                )
+            }
             reservationViewModel.clearMessages()
             onReservationCreated()
         }
@@ -378,9 +401,9 @@ fun ReservationCreateScreen(
                 text = "Confirmar reserva",
                 onClick = {
                     selectedVehicleId?.let { vehicleId ->
-                        val spaceId = 1L
+                        // Sin parkingSpaceId: el servidor asigna un espacio libre de este estacionamiento
                         reservationViewModel.createReservation(
-                            parkingSpaceId = spaceId,
+                            parkingLotId = parkingId,
                             vehicleId = vehicleId,
                             startTime = formatter.format(startTime),
                             endTime = formatter.format(endTime)

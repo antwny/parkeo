@@ -18,7 +18,6 @@ import pe.parkeo.dto.response.ApiResponse;
 import pe.parkeo.dto.response.ReservationDetailResponse;
 import pe.parkeo.dto.response.ReservationResponse;
 import pe.parkeo.entity.User;
-import pe.parkeo.enums.ReservationStatus;
 import pe.parkeo.exception.ResourceNotFoundException;
 import pe.parkeo.repository.UserRepository;
 import pe.parkeo.service.ReservationService;
@@ -41,6 +40,7 @@ public class ReservationController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
+        
         Long userId = resolveUserId(userDetails);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(ApiResponse.ok(reservationService.getMyReservations(userId, status, pageable)));
@@ -51,6 +51,7 @@ public class ReservationController {
     public ResponseEntity<ApiResponse<ReservationDetailResponse>> getReservation(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
+        
         Long userId = resolveUserId(userDetails);
         return ResponseEntity.ok(ApiResponse.ok(reservationService.getReservationDetail(id, userId, false)));
     }
@@ -60,17 +61,12 @@ public class ReservationController {
     public ResponseEntity<ApiResponse<ReservationResponse>> createReservation(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateReservationRequest request) {
+        
         Long userId = resolveUserId(userDetails);
-
-        if (request.getEndTime() != null && request.getStartTime() != null &&
-                !request.getEndTime().isAfter(request.getStartTime())) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("La hora de fin debe ser posterior a la hora de inicio"));
-        }
-
         ReservationResponse response = reservationService.createReservation(request, userId);
+        
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok("Reserva creada exitosamente", response));
+                .body(ApiResponse.created("Reserva creada exitosamente", response));
     }
 
     @PatchMapping("/{id}/cancel")
@@ -79,9 +75,11 @@ public class ReservationController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, String> body) {
+        
         Long userId = resolveUserId(userDetails);
         String reason = (body != null) ? body.get("reason") : null;
         ReservationResponse response = reservationService.cancelReservation(id, userId, reason);
+        
         return ResponseEntity.ok(ApiResponse.ok("Reserva cancelada", response));
     }
 

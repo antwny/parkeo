@@ -4,14 +4,14 @@
 # ============================================
 set -e
 
-PARKEO_DIR="$HOME/Documentos/Parkeo"
+PARKEO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$PARKEO_DIR/backend"
 MVN="/home/antwny/.sdkman/candidates/maven/current/bin/mvn"
 
 export DB_URL="jdbc:mysql://localhost:3306/parkeo_db?useSSL=false&serverTimezone=America/Lima&allowPublicKeyRetrieval=true"
 export DB_USERNAME="antwny"
 export DB_PASSWORD="198009"
-export JWT_SECRET="parkeo-dev-secret-key-min-256-bits-0123456789abcdefghijklmnopqrstuvwxyz"
+export JWT_SECRET="parkeo-super-secret-key-change-in-production-min-256-bits-0123456789"
 export JWT_EXPIRATION="86400000"
 export JWT_REFRESH_EXPIRATION="604800000"
 export SPRING_PROFILES_ACTIVE="dev"

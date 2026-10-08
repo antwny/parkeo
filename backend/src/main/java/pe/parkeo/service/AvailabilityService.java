@@ -3,28 +3,104 @@ package pe.parkeo.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.parkeo.dto.request.CheckAvailabilityRequest;
+import pe.parkeo.dto.response.AvailabilityResponse;
+import pe.parkeo.dto.response.ParkingSpaceResponse;
+import pe.parkeo.entity.ParkingLot;
 import pe.parkeo.entity.ParkingSpace;
+import pe.parkeo.entity.Schedule;
 import pe.parkeo.entity.Tariff;
+import pe.parkeo.enums.DayOfWeek;
+import pe.parkeo.enums.ReservationStatus;
+import pe.parkeo.enums.SpaceStatus;
 import pe.parkeo.enums.TariffType;
+import pe.parkeo.exception.ValidationException;
 import pe.parkeo.exception.ResourceNotFoundException;
+import pe.parkeo.repository.ParkingLotRepository;
 import pe.parkeo.repository.ParkingSpaceRepository;
+import pe.parkeo.repository.ReservationRepository;
 import pe.parkeo.repository.TariffRepository;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AvailabilityService {
 
+    private final ParkingLotRepository parkingLotRepository;
     private final ParkingSpaceRepository parkingSpaceRepository;
     private final TariffRepository tariffRepository;
-    private final pe.parkeo.repository.ReservationRepository reservationRepository;
+    private final ReservationRepository reservationRepository;
 
     /**
-     * Checks if a given space is available for the requested time window.
+     * Consulta la disponibilidad general de un estacionamiento para un rango de fecha/hora
+     * y tipo de vehículo, calculando el precio estimado y devolviendo los espacios libres.
+     */
+    @Transactional(readOnly = true)
+    public AvailabilityResponse checkAvailability(CheckAvailabilityRequest request) {
+        LocalDateTime start = request.getStartTime();
+        LocalDateTime end = request.getEndTime();
+
+        if (start == null || end == null || !end.isAfter(start)) {
+            throw new ValidationException("La hora de fin debe ser posterior a la hora de inicio");
+        }
+
+        ParkingLot lot = parkingLotRepository.findById(request.getParkingLotId())
+                .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", request.getParkingLotId()));
+
+        if (!Boolean.TRUE.equals(lot.getIsActive())) {
+            throw new ValidationException("El estacionamiento seleccionado no se encuentra activo");
+        }
+
+        // 1. Validar horario de atención del estacionamiento
+        validateOperatingHours(lot, start, end);
+
+        // 2. Obtener los espacios candidatos (físicamente activos y asignados al tipo de vehículo)
+        List<ParkingSpace> candidateSpaces = parkingSpaceRepository
+                .findByParkingLotIdAndVehicleTypeIdAndStatus(
+                        lot.getId(), request.getVehicleTypeId(), SpaceStatus.AVAILABLE);
+
+        // 3. Obtener espacios que ya tienen reservas traslapadas
+        List<ReservationStatus> activeStatuses = Arrays.asList(
+                ReservationStatus.PENDING,
+                ReservationStatus.CONFIRMED,
+                ReservationStatus.ACTIVE
+        );
+
+        List<Long> reservedSpaceIds = reservationRepository.findReservedSpaceIds(
+                lot.getId(), start, end, activeStatuses);
+
+        // 4. Filtrar solo los espacios realmente libres
+        List<ParkingSpace> availableSpaces = candidateSpaces.stream()
+                .filter(space -> !reservedSpaceIds.contains(space.getId()))
+                .toList();
+
+        // 5. Calcular horas y monto total estimado
+        Duration duration = Duration.between(start, end);
+        long totalHours = (long) Math.ceil(duration.toMinutes() / 60.0);
+        BigDecimal totalAmount = calculatePrice(lot.getId(), request.getVehicleTypeId(), start, end);
+
+        List<ParkingSpaceResponse> spaceResponses = availableSpaces.stream()
+                .map(this::mapSpaceToResponse)
+                .toList();
+
+        return AvailabilityResponse.builder()
+                .parkingLotId(lot.getId())
+                .isAvailable(!availableSpaces.isEmpty())
+                .totalHours(totalHours)
+                .calculatedPrice(totalAmount)
+                .currency("PEN")
+                .availableSpaces(spaceResponses)
+                .build();
+    }
+
+    /**
+     * Revisa si un espacio específico está disponible en la ventana de tiempo elegida.
      */
     @Transactional(readOnly = true)
     public boolean isSpaceAvailable(Long spaceId, LocalDateTime startTime, LocalDateTime endTime) {
@@ -33,8 +109,7 @@ public class AvailabilityService {
     }
 
     /**
-     * Calculates the total price for a reservation based on applicable tariffs.
-     * Uses HOURLY tariff by default; falls back to FIXED if no HOURLY tariff exists.
+     * Calcula el precio total de una reserva según las tarifas aplicables (HOURLY, DAILY, FIXED).
      */
     @Transactional(readOnly = true)
     public BigDecimal calculatePrice(Long parkingLotId, Long vehicleTypeId,
@@ -43,7 +118,7 @@ public class AvailabilityService {
                 parkingLotId, vehicleTypeId);
 
         if (tariffs.isEmpty()) {
-            // Try generic tariffs (no vehicle type restriction)
+            // Tarifas genéricas (sin restricción de tipo de vehículo)
             tariffs = tariffRepository.findByParkingLotIdAndIsActiveTrue(parkingLotId).stream()
                     .filter(t -> t.getVehicleType() == null)
                     .toList();
@@ -57,14 +132,14 @@ public class AvailabilityService {
         long totalMinutes = duration.toMinutes();
         double hours = totalMinutes / 60.0;
 
-        // Try HOURLY tariff first
+        // Tarifa por hora
         for (Tariff tariff : tariffs) {
             if (tariff.getTariffType() == TariffType.HOURLY) {
                 return tariff.getPrice().multiply(BigDecimal.valueOf(Math.ceil(hours)));
             }
         }
 
-        // Try DAILY
+        // Tarifa diaria
         for (Tariff tariff : tariffs) {
             if (tariff.getTariffType() == TariffType.DAILY) {
                 long days = Math.max(1, duration.toDays());
@@ -72,7 +147,7 @@ public class AvailabilityService {
             }
         }
 
-        // Fallback to FIXED
+        // Tarifa fija
         for (Tariff tariff : tariffs) {
             if (tariff.getTariffType() == TariffType.FIXED) {
                 return tariff.getPrice();
@@ -80,5 +155,48 @@ public class AvailabilityService {
         }
 
         return BigDecimal.ZERO;
+    }
+
+    // ─── Helpers de apoyo ──────────────────────────────────────────────────────
+
+    private void validateOperatingHours(ParkingLot lot, LocalDateTime start, LocalDateTime end) {
+        if (lot.getSchedules() == null || lot.getSchedules().isEmpty()) {
+            return;
+        }
+
+        DayOfWeek currentDay = DayOfWeek.valueOf(start.getDayOfWeek().name());
+
+        Schedule schedule = lot.getSchedules().stream()
+                .filter(s -> s.getDayOfWeek() == currentDay)
+                .findFirst()
+                .orElseThrow(() -> new ValidationException("El estacionamiento no opera los días " + currentDay));
+
+        if (Boolean.TRUE.equals(schedule.getIsClosed())) {
+            throw new ValidationException("El estacionamiento se encuentra cerrado los días " + currentDay);
+        }
+
+        LocalTime openTime = LocalTime.parse(schedule.getOpenTime());
+        LocalTime closeTime = LocalTime.parse(schedule.getCloseTime());
+
+        LocalTime reqStart = start.toLocalTime();
+        LocalTime reqEnd = end.toLocalTime();
+
+        if (reqStart.isBefore(openTime) || reqEnd.isAfter(closeTime)) {
+            throw new ValidationException(String.format("El horario solicitado está fuera de atención (%s - %s)",
+                    schedule.getOpenTime(), schedule.getCloseTime()));
+        }
+    }
+
+    private ParkingSpaceResponse mapSpaceToResponse(ParkingSpace space) {
+        return ParkingSpaceResponse.builder()
+                .id(space.getId())
+                .spaceNumber(space.getSpaceNumber())
+                .floor(space.getFloor())
+                .section(space.getSection())
+                .isCovered(space.getIsCovered())
+                .hasCharging(space.getHasCharging())
+                .isAccessible(space.getIsAccessible())
+                .status(space.getStatus().name())
+                .build();
     }
 }

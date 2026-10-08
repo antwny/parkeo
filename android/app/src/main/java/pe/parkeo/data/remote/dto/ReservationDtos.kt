@@ -20,6 +20,9 @@ data class ReservationDto(
     @SerialName("parkingLotId") val parkingLotId: Long? = null,
     @SerialName("parkingSpaceId") val parkingSpaceId: Long? = null,
     @SerialName("vehicleId") val vehicleId: Long? = null,
+    // Solo vienen en el detalle de la reserva (GET /api/reservations/{id})
+    @SerialName("parkingLotLatitude") val parkingLotLatitude: Double? = null,
+    @SerialName("parkingLotLongitude") val parkingLotLongitude: Double? = null,
     @SerialName("createdAt") val createdAt: String? = null
 ) {
     val totalPrice: Double? get() = totalAmount ?: totalPriceVal
@@ -27,8 +30,15 @@ data class ReservationDto(
 
 @Serializable
 data class CreateReservationRequestDto(
-    @SerialName("parkingSpaceId") val parkingSpaceId: Long,
+    @SerialName("parkingLotId") val parkingLotId: Long,
+    @SerialName("parkingSpaceId") val parkingSpaceId: Long? = null,
     @SerialName("vehicleId") val vehicleId: Long,
     @SerialName("startTime") val startTime: String,
-    @SerialName("endTime") val endTime: String
+    @SerialName("endTime") val endTime: String,
+    @SerialName("notes") val notes: String? = null
+)
+
+@Serializable
+data class CancelReservationRequestDto(
+    @SerialName("reason") val reason: String? = null
 )

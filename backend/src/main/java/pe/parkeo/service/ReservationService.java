@@ -3,6 +3,7 @@ package pe.parkeo.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -15,12 +16,13 @@ import pe.parkeo.enums.ReservationStatus;
 import pe.parkeo.enums.SpaceStatus;
 import pe.parkeo.exception.ConflictException;
 import pe.parkeo.exception.ResourceNotFoundException;
-import pe.parkeo.exception.UnauthorizedException;
 import pe.parkeo.exception.ValidationException;
 import pe.parkeo.repository.*;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -38,66 +40,67 @@ public class ReservationService {
     private final UserRepository userRepository;
     private final AvailabilityService availabilityService;
 
+    private static final ZoneId LIMA = ZoneId.of("America/Lima");
+    private static final int MIN_MINUTES = 30;
+    private static final int MAX_HOURS = 24;
+    private static final int MAX_DAYS_AHEAD = 30;
+
     /**
-     * Creates a reservation with SERIALIZABLE isolation to prevent double-booking.
-     * Steps:
-     *  1. Validate space exists
-     *  2. Validate time range (endTime > startTime, min 30 min)
-     *  3. Validate vehicle belongs to user
-     *  4. Check no overlapping reservations (with pessimistic lock)
-     *  5. Calculate price
-     *  6. Create reservation
-     *  7. Return response
+     * Crea una reserva.
+     *  - Si viene parkingSpaceId: usa ese espacio.
+     *  - Si NO viene parkingSpaceId pero sí parkingLotId: asigna un espacio libre automáticamente.
+     *
+     * READ_COMMITTED + bloqueo de la fila del espacio = una sola reserva por espacio/horario.
      */
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ReservationResponse createReservation(CreateReservationRequest request, Long userId) {
-        // 1. Validate space
-        ParkingSpace space = parkingSpaceRepository.findById(request.getParkingSpaceId())
-                .orElseThrow(() -> new ResourceNotFoundException("Espacio de estacionamiento", request.getParkingSpaceId()));
+        LocalDateTime start = request.getStartTime();
+        LocalDateTime end = request.getEndTime();
 
-        if (space.getStatus() == SpaceStatus.MAINTENANCE || space.getStatus() == SpaceStatus.INACTIVE) {
-            throw new ValidationException("El espacio seleccionado no está disponible: " + space.getStatus());
-        }
+        // 1. Validar horario
+        validateTimeRange(start, end);
 
-        // 2. Validate time range
-        if (!request.getEndTime().isAfter(request.getStartTime())) {
-            throw new ValidationException("La hora de fin debe ser posterior a la hora de inicio");
-        }
-        if (request.getStartTime().plusMinutes(30).isAfter(request.getEndTime())) {
-            throw new ValidationException("La reserva debe ser de al menos 30 minutos");
-        }
-
-        // 3. Validate vehicle ownership
+        // 2. Vehículo del usuario y con tipo asignado
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(request.getVehicleId(), userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehículo", request.getVehicleId()));
+        if (vehicle.getVehicleType() == null) {
+            throw new ValidationException("El vehículo no tiene un tipo asignado");
+        }
+        Long vehicleTypeId = vehicle.getVehicleType().getId();
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", userId));
 
-        // 4. Check for overlapping reservations (pessimistic lock applied inside)
-        List<Reservation> overlapping = reservationRepository.findOverlappingForUpdate(
-                space.getId(), request.getStartTime(), request.getEndTime());
-
-        if (!overlapping.isEmpty()) {
-            throw new ConflictException(
-                    "El espacio ya está reservado para el período solicitado: " +
-                    request.getStartTime() + " - " + request.getEndTime());
+        // 3. El mismo vehículo no puede estar en dos reservas a la vez
+        if (reservationRepository.countOverlappingByVehicle(vehicle.getId(), start, end) > 0) {
+            throw new ConflictException("Este vehículo ya tiene una reserva en ese horario");
         }
 
-        // 5. Calculate price
-        ParkingLot lot = space.getParkingLot();
-        Long vehicleTypeId = vehicle.getVehicleType() != null ? vehicle.getVehicleType().getId() : null;
-        BigDecimal totalAmount = availabilityService.calculatePrice(
-                lot.getId(), vehicleTypeId, request.getStartTime(), request.getEndTime());
+        // 4. Espacio: el elegido o uno asignado automáticamente (ya bloqueado y verificado)
+        ParkingSpace space = (request.getParkingSpaceId() != null)
+                ? lockAndCheckSpace(request.getParkingSpaceId(), vehicleTypeId, start, end)
+                : assignFreeSpace(request.getParkingLotId(), vehicleTypeId, start, end);
 
-        // 6. Create reservation
+        // 5. Estacionamiento activo y abierto
+        ParkingLot lot = space.getParkingLot();
+        if (!Boolean.TRUE.equals(lot.getIsActive()) || !Boolean.TRUE.equals(lot.getIsOpen())) {
+            throw new ValidationException("El estacionamiento no está disponible en este momento");
+        }
+
+        // 6. Precio calculado en el servidor
+        BigDecimal totalAmount = availabilityService.calculatePrice(lot.getId(), vehicleTypeId, start, end);
+        if (totalAmount == null || totalAmount.signum() <= 0) {
+            throw new ValidationException("No hay tarifa para este tipo de vehículo en este estacionamiento");
+        }
+
+        // 7. Guardar
         Reservation reservation = Reservation.builder()
                 .user(user)
                 .parkingSpace(space)
                 .vehicle(vehicle)
                 .parkingLot(lot)
-                .startTime(request.getStartTime())
-                .endTime(request.getEndTime())
+                .startTime(start)
+                .endTime(end)
                 .status(ReservationStatus.PENDING)
                 .totalAmount(totalAmount)
                 .currency("PEN")
@@ -111,6 +114,72 @@ public class ReservationService {
 
         return mapToResponse(reservation);
     }
+
+    // ─── Helpers de creación ──────────────────────────────────────────────────
+
+    private void validateTimeRange(LocalDateTime start, LocalDateTime end) {
+        if (start == null || end == null) {
+            throw new ValidationException("Debes indicar la hora de inicio y de fin");
+        }
+        if (!end.isAfter(start)) {
+            throw new ValidationException("La hora de fin debe ser posterior a la hora de inicio");
+        }
+        LocalDateTime now = LocalDateTime.now(LIMA);
+        if (start.isBefore(now.minusMinutes(5))) {
+            throw new ValidationException("La hora de inicio ya pasó");
+        }
+        if (start.isAfter(now.plusDays(MAX_DAYS_AHEAD))) {
+            throw new ValidationException("Solo puedes reservar hasta con " + MAX_DAYS_AHEAD + " días de anticipación");
+        }
+        long minutes = Duration.between(start, end).toMinutes();
+        if (minutes < MIN_MINUTES) {
+            throw new ValidationException("La reserva debe ser de al menos " + MIN_MINUTES + " minutos");
+        }
+        if (minutes > MAX_HOURS * 60L) {
+            throw new ValidationException("La reserva no puede superar las " + MAX_HOURS + " horas");
+        }
+    }
+
+    /** Espacio elegido por el cliente: se bloquea y se valida. */
+    private ParkingSpace lockAndCheckSpace(Long spaceId, Long vehicleTypeId,
+                                           LocalDateTime start, LocalDateTime end) {
+        ParkingSpace space = parkingSpaceRepository.findByIdForUpdate(spaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Espacio de estacionamiento", spaceId));
+
+        if (space.getStatus() == SpaceStatus.MAINTENANCE || space.getStatus() == SpaceStatus.INACTIVE) {
+            throw new ValidationException("El espacio seleccionado no está disponible: " + space.getStatus());
+        }
+        if (space.getVehicleType() == null || !space.getVehicleType().getId().equals(vehicleTypeId)) {
+            throw new ValidationException("El espacio no es apto para el tipo de vehículo seleccionado");
+        }
+        // Lectura con FOR UPDATE: ve lo último confirmado por otras transacciones
+        if (!reservationRepository.findOverlappingForUpdate(space.getId(), start, end).isEmpty()) {
+            throw new ConflictException("El espacio ya está reservado para el período solicitado");
+        }
+        return space;
+    }
+
+    /** Sin espacio elegido: busca uno libre del tipo correcto en el estacionamiento. */
+    private ParkingSpace assignFreeSpace(Long parkingLotId, Long vehicleTypeId,
+                                         LocalDateTime start, LocalDateTime end) {
+        if (parkingLotId == null) {
+            throw new ValidationException("Debes indicar el estacionamiento o el espacio");
+        }
+        List<ParkingSpace> candidates = parkingSpaceRepository
+                .findFreeSpaces(parkingLotId, vehicleTypeId, start, end, PageRequest.of(0, 5));
+
+        for (ParkingSpace candidate : candidates) {
+            // Se bloquea y se vuelve a verificar por si otro usuario lo tomó justo ahora
+            ParkingSpace locked = parkingSpaceRepository.findByIdForUpdate(candidate.getId()).orElse(null);
+            if (locked != null
+                    && reservationRepository.findOverlappingForUpdate(locked.getId(), start, end).isEmpty()) {
+                return locked;
+            }
+        }
+        throw new ConflictException("No hay espacios disponibles para ese horario");
+    }
+
+    // ─── Consultas ────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public Page<ReservationResponse> getMyReservations(Long userId, String statusParam, Pageable pageable) {
@@ -159,21 +228,23 @@ public class ReservationService {
         return mapToDetailResponse(reservation);
     }
 
+    // ─── Cancelar ─────────────────────────────────────────────────────────────
+
     @Transactional
     public ReservationResponse cancelReservation(Long reservationId, Long userId, String reason) {
         Reservation reservation = reservationRepository.findByIdAndUserId(reservationId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
 
-        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
-            throw new ValidationException("La reserva ya está cancelada");
-        }
-        if (reservation.getStatus() == ReservationStatus.COMPLETED ||
-            reservation.getStatus() == ReservationStatus.ACTIVE) {
-            throw new ValidationException("No se puede cancelar una reserva " + reservation.getStatus());
+        // Lista blanca: solo estas se pueden cancelar
+        if (reservation.getStatus() != ReservationStatus.PENDING
+                && reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            throw new ValidationException(
+                    "Solo se pueden cancelar reservas pendientes o confirmadas (estado actual: "
+                            + reservation.getStatus() + ")");
         }
 
         reservation.setStatus(ReservationStatus.CANCELLED);
-        reservation.setCancelledAt(LocalDateTime.now());
+        reservation.setCancelledAt(LocalDateTime.now(LIMA));
         reservation.setCancellationReason(reason);
 
         reservation = reservationRepository.save(reservation);
@@ -202,6 +273,8 @@ public class ReservationService {
                 .parkingLotId(r.getParkingLot().getId())
                 .parkingLotName(r.getParkingLot().getName())
                 .parkingLotAddress(r.getParkingLot().getAddress())
+                .parkingLotLatitude(r.getParkingLot().getLatitude())
+                .parkingLotLongitude(r.getParkingLot().getLongitude())
                 .parkingSpaceId(r.getParkingSpace().getId())
                 .spaceNumber(r.getParkingSpace().getSpaceNumber())
                 .vehicleId(r.getVehicle().getId())
