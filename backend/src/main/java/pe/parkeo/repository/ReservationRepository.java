@@ -52,7 +52,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      * Overlap check para un espacio específico.
      */
     @Query("SELECT COUNT(r) FROM Reservation r WHERE r.parkingSpace.id = :spaceId " +
-           "AND r.status IN ('PENDING', 'CONFIRMED', 'IN_USE') " +
+           "AND r.status IN ('PENDING', 'CONFIRMED', 'ACTIVE') " +
            "AND r.startTime < :endTime AND r.endTime > :startTime")
     long countOverlapping(
             @Param("spaceId") Long spaceId,
@@ -65,7 +65,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      */
     @Query("SELECT COUNT(r) FROM Reservation r WHERE r.parkingSpace.id = :spaceId " +
            "AND r.id <> :excludeId " +
-           "AND r.status IN ('PENDING', 'CONFIRMED', 'IN_USE') " +
+           "AND r.status IN ('PENDING', 'CONFIRMED', 'ACTIVE') " +
            "AND r.startTime < :endTime AND r.endTime > :startTime")
     long countOverlappingExcluding(
             @Param("spaceId") Long spaceId,
@@ -79,7 +79,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Reservation r WHERE r.parkingSpace.id = :spaceId " +
-           "AND r.status IN ('PENDING', 'CONFIRMED', 'IN_USE') " +
+           "AND r.status IN ('PENDING', 'CONFIRMED', 'ACTIVE') " +
            "AND r.startTime < :endTime AND r.endTime > :startTime")
     List<Reservation> findOverlappingForUpdate(
             @Param("spaceId") Long spaceId,
@@ -91,7 +91,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
      * Comprueba si el vehículo ya tiene una reserva activa/pendiente en ese mismo horario.
      */
     @Query("SELECT COUNT(r) FROM Reservation r WHERE r.vehicle.id = :vehicleId " +
-           "AND r.status IN ('PENDING', 'CONFIRMED', 'IN_USE') " +
+           "AND r.status IN ('PENDING', 'CONFIRMED', 'ACTIVE') " +
            "AND r.startTime < :endTime AND r.endTime > :startTime")
     long countOverlappingByVehicle(
             @Param("vehicleId") Long vehicleId,

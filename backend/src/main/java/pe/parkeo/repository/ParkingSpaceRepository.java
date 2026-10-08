@@ -44,7 +44,7 @@ public interface ParkingSpaceRepository extends JpaRepository<ParkingSpace, Long
            "AND ps.vehicleType.id = :vehicleTypeId " +
            "AND ps.status NOT IN ('MAINTENANCE', 'INACTIVE') " +
            "AND NOT EXISTS (SELECT 1 FROM Reservation r WHERE r.parkingSpace = ps " +
-           "    AND r.status IN ('PENDING', 'CONFIRMED', 'IN_USE') " +
+           "    AND r.status IN ('PENDING', 'CONFIRMED', 'ACTIVE') " +
            "    AND :startTime < r.endTime AND :endTime > r.startTime) " +
            "ORDER BY ps.id")
     List<ParkingSpace> findFreeSpaces(

@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">
-<refactoring comment="Rename resource &apos;src/main/java/pe/parkeo/dto/request/CheckAvailabilityRequest&apos; to &apos;CheckAvailabilityRequest.java&apos;" description="Rename resource &apos;CheckAvailabilityRequest&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="main/java/pe/parkeo/dto/request/CheckAvailabilityRequest" name="CheckAvailabilityRequest.java" stamp="1791386425118" updateReferences="true"/>
-</session>

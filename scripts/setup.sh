@@ -4,7 +4,7 @@
 # ============================================
 set -e
 
-PARKEO_DIR="$HOME/Documentos/Parkeo"
+PARKEO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DB_USER="antwny"
 DB_PASS="198009"
 DB_NAME="parkeo_db"

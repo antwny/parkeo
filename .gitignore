@@ -129,6 +129,8 @@ nbproject/
 .classpath
 .project
 .settings/
+.metadata/
+**/.metadata/
 bin/
 
 # =====================================
