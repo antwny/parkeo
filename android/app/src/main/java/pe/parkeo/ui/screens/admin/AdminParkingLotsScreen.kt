@@ -1,18 +1,22 @@
 package pe.parkeo.ui.screens.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pe.parkeo.data.remote.dto.ParkingLotDto
+import pe.parkeo.data.remote.dto.UserDto
 import pe.parkeo.ui.components.*
 import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.AdminViewModel
@@ -27,6 +31,7 @@ fun AdminParkingLotsScreen(
     val extended = ParkeoTheme.colors
     var searchQuery by remember { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
+    var lotToAssignOperator by remember { mutableStateOf<ParkingLotDto?>(null) }
 
     val filteredLots = remember(uiState.parkingLots, searchQuery) {
         if (searchQuery.isBlank()) {
@@ -146,12 +151,31 @@ fun AdminParkingLotsScreen(
                                 onToggleActive = { isActive ->
                                     viewModel.toggleParkingLotStatus(lot.id, isOpen = lot.isOpen, isActive = isActive)
                                 },
+                                onAssignOperator = { lotToAssignOperator = lot },
                                 onClick = { onSelectLotDetail?.invoke(lot.id) }
                             )
                         }
                     }
                 }
             }
+        }
+
+        lotToAssignOperator?.let { lot ->
+            val operators = remember(uiState.users) {
+                uiState.users.filter {
+                    it.role.contains("OPERATOR", ignoreCase = true) ||
+                            it.roles.any { r -> r.contains("OPERATOR", ignoreCase = true) }
+                }
+            }
+            AssignOperatorDialog(
+                lot = lot,
+                operators = operators,
+                onDismiss = { lotToAssignOperator = null },
+                onConfirm = { opId ->
+                    viewModel.assignOperator(lot.id, opId)
+                    lotToAssignOperator = null
+                }
+            )
         }
     }
 }
@@ -161,6 +185,7 @@ private fun AdminParkingLotCard(
     lot: ParkingLotDto,
     onToggleOpen: (Boolean) -> Unit,
     onToggleActive: (Boolean) -> Unit,
+    onAssignOperator: () -> Unit,
     onClick: () -> Unit
 ) {
     val extended = ParkeoTheme.colors
@@ -260,24 +285,60 @@ private fun AdminParkingLotCard(
 
             Spacer(Modifier.height(8.dp))
 
-            // Assigned Operator Status
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            // Assigned Operator Status with interactive assignment button
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onAssignOperator),
+                color = extended.surface2,
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    Dimens.borderHairline,
+                    if (lot.operatorName != null) extended.borderSubtle else extended.signalAmber.copy(alpha = 0.5f)
+                )
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Badge,
-                    contentDescription = null,
-                    modifier = Modifier.size(15.dp),
-                    tint = if (lot.operatorName != null) extended.accent else extended.signalAmber
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = if (lot.operatorName != null) "Operador: ${lot.operatorName}" else "Sin operador asignado",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (lot.operatorName != null) extended.textSecondary else extended.signalAmber,
-                    fontWeight = FontWeight.Medium
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Badge,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (lot.operatorName != null) extended.accent else extended.signalAmber
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (lot.operatorName != null) "Operador: ${lot.operatorName}" else "Sin operador asignado",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (lot.operatorName != null) extended.textPrimary else extended.signalAmber,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = if (lot.operatorName != null) "Toca para reasignar" else "Toca para asignar operador",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = extended.textTertiary,
+                            fontSize = 10.sp
+                        )
+                    }
+                    Text(
+                        text = if (lot.operatorName != null) "Cambiar" else "Asignar",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = extended.accent
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = extended.accent
+                    )
+                }
             }
 
             HorizontalDivider(
@@ -341,3 +402,122 @@ private fun AdminParkingLotCard(
         }
     }
 }
+
+@Composable
+private fun AssignOperatorDialog(
+    lot: ParkingLotDto,
+    operators: List<UserDto>,
+    onDismiss: () -> Unit,
+    onConfirm: (Long) -> Unit
+) {
+    val extended = ParkeoTheme.colors
+    var selectedOperatorId by remember {
+        mutableStateOf(lot.operatorId ?: operators.firstOrNull()?.id ?: 0L)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = extended.surface1,
+        titleContentColor = extended.textPrimary,
+        textContentColor = extended.textSecondary,
+        title = {
+            Text(
+                text = "Asignar Operador",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Selecciona el operador encargado de gestionar las entradas y salidas de \"${lot.name}\":",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = extended.textSecondary
+                )
+
+                if (operators.isEmpty()) {
+                    Text(
+                        text = "No hay operadores registrados en el sistema.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = extended.signalAmber
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 240.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(operators, key = { it.id }) { operator ->
+                            val isSelected = operator.id == selectedOperatorId
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { selectedOperatorId = operator.id },
+                                color = if (isSelected) extended.accent.copy(alpha = 0.15f) else extended.surface2,
+                                shape = RoundedCornerShape(8.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    Dimens.borderHairline,
+                                    if (isSelected) extended.accent else extended.borderSubtle
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "${operator.firstName} ${operator.lastName}".trim(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = extended.textPrimary
+                                        )
+                                        Text(
+                                            text = operator.email,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = extended.textTertiary
+                                        )
+                                    }
+                                    RadioButton(
+                                        selected = isSelected,
+                                        onClick = { selectedOperatorId = operator.id },
+                                        colors = RadioButtonDefaults.colors(
+                                            selectedColor = extended.accent,
+                                            unselectedColor = extended.textTertiary
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            ParkeoButton(
+                text = "Asignar",
+                onClick = {
+                    if (selectedOperatorId != 0L) {
+                        onConfirm(selectedOperatorId)
+                    }
+                },
+                enabled = selectedOperatorId != 0L
+            )
+        },
+        dismissButton = {
+            ParkeoButton(
+                text = "Cancelar",
+                onClick = onDismiss,
+                style = ParkeoButtonStyle.Ghost
+            )
+        }
+    )
+}
+

@@ -96,6 +96,30 @@ class AdminViewModel(
         }
     }
 
+    fun assignOperator(parkingLotId: Long, operatorId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            when (val result = adminRepository.assignOperator(parkingLotId, operatorId)) {
+                is Result.Success -> {
+                    val updatedLots = _uiState.value.parkingLots.map { lot ->
+                        if (lot.id == parkingLotId) result.data else lot
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            parkingLots = updatedLots,
+                            successMessage = "Operador asignado exitosamente"
+                        )
+                    }
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(isLoading = false, error = result.message) }
+                }
+                else -> {}
+            }
+        }
+    }
+
     fun toggleUserStatus(id: Long, currentActive: Boolean) {
         viewModelScope.launch {
             val targetActive = !currentActive

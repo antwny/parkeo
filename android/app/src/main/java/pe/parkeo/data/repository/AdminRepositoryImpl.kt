@@ -30,6 +30,13 @@ class AdminRepositoryImpl(
         } else throw Exception(response.body()?.message ?: "Error al actualizar estacionamiento")
     }
 
+    override suspend fun assignOperator(id: Long, operatorId: Long): Result<ParkingLotDto> = safeApiCall {
+        val response = adminApi.assignOperator(id, AssignOperatorRequestDto(operatorId))
+        if (response.isSuccessful && response.body()?.success == true) {
+            response.body()!!.data!!
+        } else throw Exception(response.body()?.message ?: "Error al asignar operador")
+    }
+
     override suspend fun deactivateParkingLot(id: Long): Result<Unit> = safeApiCall {
         val response = adminApi.deactivateParkingLot(id)
         if (response.isSuccessful && response.body()?.success == true) {

@@ -10,7 +10,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -38,6 +40,13 @@ enum class HomeViewMode {
     MAP, LIST
 }
 
+enum class HomeFilter(val label: String) {
+    ALL("Todos"),
+    OPEN("Abiertos"),
+    AVAILABLE("Con espacio"),
+    HIGH_CAPACITY("Alta capacidad")
+}
+
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -61,6 +70,16 @@ fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
     var viewMode by remember { mutableStateOf(HomeViewMode.MAP) }
     var selectedLot by remember { mutableStateOf<ParkingLotDto?>(null) }
+    var activeFilter by remember { mutableStateOf(HomeFilter.ALL) }
+
+    val displayedLots = remember(uiState.parkingLots, activeFilter) {
+        when (activeFilter) {
+            HomeFilter.ALL -> uiState.parkingLots
+            HomeFilter.OPEN -> uiState.parkingLots.filter { it.isOpen }
+            HomeFilter.AVAILABLE -> uiState.parkingLots.filter { it.availableSpaces > 0 }
+            HomeFilter.HIGH_CAPACITY -> uiState.parkingLots.filter { it.availableSpaces >= 5 }
+        }
+    }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -223,10 +242,37 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                text = "Lista (${uiState.parkingLots.size})",
+                                text = "Lista (${displayedLots.size})",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (isListSelected) FontWeight.Bold else FontWeight.Medium,
                                 color = if (isListSelected) extended.accent else extended.textSecondary
+                            )
+                        }
+                    }
+                }
+
+                // Quick Filter Chips Bar
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(HomeFilter.entries.toList()) { filter ->
+                        val isSelected = activeFilter == filter
+                        Surface(
+                            onClick = { activeFilter = filter },
+                            color = if (isSelected) extended.accent else extended.surface2,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(
+                                Dimens.borderHairline,
+                                if (isSelected) extended.accent else extended.borderSubtle
+                            )
+                        ) {
+                            Text(
+                                text = filter.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) extended.onAccent else extended.textSecondary,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                         }
                     }
@@ -253,7 +299,7 @@ fun HomeScreen(
                                 selectedLot = null
                             }
                         ) {
-                            uiState.parkingLots.forEach { parking ->
+                            displayedLots.forEach { parking ->
                                 val markerHue = when {
                                     !parking.isOpen || parking.availableSpaces == 0 -> BitmapDescriptorFactory.HUE_RED
                                     parking.availableSpaces <= 3 -> BitmapDescriptorFactory.HUE_ORANGE
@@ -483,7 +529,7 @@ fun HomeScreen(
                             }
                         }
 
-                        uiState.parkingLots.isEmpty() -> {
+                        displayedLots.isEmpty() -> {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
@@ -491,9 +537,9 @@ fun HomeScreen(
                                 ParkeoEmptyState(
                                     title = "No encontramos cocheras",
                                     subtitle = if (searchQuery.isNotBlank())
-                                        "No hay resultados para \"$searchQuery\" en esta zona"
+                                        "No hay resultados para \"$searchQuery\" con los filtros aplicados"
                                     else
-                                        "No hay cocheras disponibles en este momento",
+                                        "No hay cocheras que coincidan con el filtro \"${activeFilter.label}\"",
                                     icon = Icons.Filled.SearchOff
                                 )
                             }
@@ -521,7 +567,7 @@ fun HomeScreen(
                                             color = extended.textTertiary
                                         )
                                         Text(
-                                            text = "${uiState.parkingLots.size} en total",
+                                            text = "${displayedLots.size} en total",
                                             style = Typography.MonospaceTechnical,
                                             fontSize = 12.sp,
                                             color = extended.accent
@@ -529,7 +575,7 @@ fun HomeScreen(
                                     }
                                 }
 
-                                items(uiState.parkingLots, key = { it.id }) { parking ->
+                                items(displayedLots, key = { it.id }) { parking ->
                                     ParkingCard(
                                         parking = parking,
                                         onClick = { onNavigateToParkingDetail(parking.id) }

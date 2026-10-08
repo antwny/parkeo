@@ -16,6 +16,7 @@ import pe.parkeo.enums.ReservationStatus;
 import pe.parkeo.enums.SpaceStatus;
 import pe.parkeo.exception.ConflictException;
 import pe.parkeo.exception.ResourceNotFoundException;
+import pe.parkeo.exception.UnauthorizedException;
 import pe.parkeo.exception.ValidationException;
 import pe.parkeo.repository.*;
 
@@ -260,6 +261,12 @@ public class ReservationService {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
 
+        ParkingLot lot = reservation.getParkingLot();
+        if (lot != null && lot.getOperator() != null && operatorId != null
+                && !lot.getOperator().getId().equals(operatorId)) {
+            throw new UnauthorizedException("El operador no está asignado a este estacionamiento");
+        }
+
         if (reservation.getStatus() != ReservationStatus.PENDING
                 && reservation.getStatus() != ReservationStatus.CONFIRMED) {
             throw new ValidationException(
@@ -278,7 +285,6 @@ public class ReservationService {
         }
 
         // Decrementar espacios disponibles en la cochera si es mayor a 0
-        ParkingLot lot = reservation.getParkingLot();
         if (lot != null && lot.getAvailableSpaces() != null && lot.getAvailableSpaces() > 0) {
             lot.setAvailableSpaces(lot.getAvailableSpaces() - 1);
             parkingLotRepository.save(lot);
@@ -293,6 +299,12 @@ public class ReservationService {
     public ReservationResponse checkOutReservation(Long reservationId, Long operatorId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
+
+        ParkingLot lot = reservation.getParkingLot();
+        if (lot != null && lot.getOperator() != null && operatorId != null
+                && !lot.getOperator().getId().equals(operatorId)) {
+            throw new UnauthorizedException("El operador no está asignado a este estacionamiento");
+        }
 
         if (reservation.getStatus() != ReservationStatus.ACTIVE) {
             throw new ValidationException(
@@ -311,7 +323,6 @@ public class ReservationService {
         }
 
         // Incrementar espacios disponibles en la cochera
-        ParkingLot lot = reservation.getParkingLot();
         if (lot != null && lot.getAvailableSpaces() != null) {
             int total = (lot.getTotalSpaces() != null) ? lot.getTotalSpaces() : 999;
             if (lot.getAvailableSpaces() < total) {

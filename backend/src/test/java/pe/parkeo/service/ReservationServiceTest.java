@@ -13,6 +13,7 @@ import pe.parkeo.entity.*;
 import pe.parkeo.enums.ReservationStatus;
 import pe.parkeo.enums.SpaceStatus;
 import pe.parkeo.exception.ConflictException;
+import pe.parkeo.exception.UnauthorizedException;
 import pe.parkeo.exception.ValidationException;
 import pe.parkeo.repository.*;
 
@@ -32,6 +33,7 @@ class ReservationServiceTest {
 
     @Mock ReservationRepository reservationRepository;
     @Mock ParkingSpaceRepository parkingSpaceRepository;
+    @Mock ParkingLotRepository parkingLotRepository;
     @Mock VehicleRepository vehicleRepository;
     @Mock UserRepository userRepository;
     @Mock AvailabilityService availabilityService;
@@ -40,6 +42,7 @@ class ReservationServiceTest {
     ReservationService reservationService;
 
     private User user;
+    private User operator;
     private ParkingLot parkingLot;
     private ParkingSpace parkingSpace;
     private Vehicle vehicle;
@@ -62,6 +65,14 @@ class ReservationServiceTest {
                 .isActive(true)
                 .build();
 
+        operator = User.builder()
+                .id(2L)
+                .firstName("Carlos")
+                .lastName("Ramos")
+                .email("operador@parkeo.pe")
+                .isActive(true)
+                .build();
+
         parkingLot = ParkingLot.builder()
                 .id(1L)
                 .name("Parking Central")
@@ -70,6 +81,7 @@ class ReservationServiceTest {
                 .longitude(-77.042793)
                 .totalSpaces(50)
                 .availableSpaces(10)
+                .operator(operator)
                 .isActive(true)
                 .isOpen(true)
                 .build();
@@ -119,9 +131,10 @@ class ReservationServiceTest {
                 .confirmationCode("PKO-ABC12345")
                 .build();
 
-        when(parkingSpaceRepository.findById(1L)).thenReturn(Optional.of(parkingSpace));
         when(vehicleRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(vehicle));
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(reservationRepository.countOverlappingByVehicle(anyLong(), any(), any())).thenReturn(0L);
+        when(parkingSpaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(parkingSpace));
         when(reservationRepository.findOverlappingForUpdate(anyLong(), any(), any()))
                 .thenReturn(Collections.emptyList());
         when(availabilityService.calculatePrice(anyLong(), anyLong(), any(), any()))
@@ -154,9 +167,10 @@ class ReservationServiceTest {
                 .status(ReservationStatus.CONFIRMED)
                 .build();
 
-        when(parkingSpaceRepository.findById(1L)).thenReturn(Optional.of(parkingSpace));
         when(vehicleRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(vehicle));
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(reservationRepository.countOverlappingByVehicle(anyLong(), any(), any())).thenReturn(0L);
+        when(parkingSpaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(parkingSpace));
         when(reservationRepository.findOverlappingForUpdate(anyLong(), any(), any()))
                 .thenReturn(List.of(existingReservation));
 
@@ -177,8 +191,6 @@ class ReservationServiceTest {
                 .endTime(startTime.minusMinutes(30)) // end before start
                 .build();
 
-        when(parkingSpaceRepository.findById(1L)).thenReturn(Optional.of(parkingSpace));
-
         assertThatThrownBy(() -> reservationService.createReservation(request, 1L))
                 .isInstanceOf(ValidationException.class);
     }
@@ -194,10 +206,91 @@ class ReservationServiceTest {
                 .endTime(endTime)
                 .build();
 
-        when(parkingSpaceRepository.findById(1L)).thenReturn(Optional.of(parkingSpace));
+        when(vehicleRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(vehicle));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(reservationRepository.countOverlappingByVehicle(anyLong(), any(), any())).thenReturn(0L);
+        when(parkingSpaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(parkingSpace));
 
         assertThatThrownBy(() -> reservationService.createReservation(request, 1L))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("MAINTENANCE");
+    }
+
+    @Test
+    @DisplayName("checkInReservation: debe registrar ingreso y poner espacio en OCCUPIED")
+    void checkInReservation_shouldSucceed() {
+        Reservation reservation = Reservation.builder()
+                .id(10L)
+                .user(user)
+                .parkingSpace(parkingSpace)
+                .parkingLot(parkingLot)
+                .vehicle(vehicle)
+                .startTime(startTime)
+                .endTime(endTime)
+                .status(ReservationStatus.PENDING)
+                .confirmationCode("PKO-CHECKIN1")
+                .totalAmount(new BigDecimal("15.00"))
+                .currency("PEN")
+                .build();
+
+        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReservationResponse response = reservationService.checkInReservation(10L, 2L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo("ACTIVE");
+        assertThat(parkingSpace.getStatus()).isEqualTo(SpaceStatus.OCCUPIED);
+        assertThat(parkingLot.getAvailableSpaces()).isEqualTo(9);
+    }
+
+    @Test
+    @DisplayName("checkInReservation: debe rechazar cuando el operador no tiene acceso a la cochera")
+    void checkInReservation_shouldThrowUnauthorized_whenOperatorMismatch() {
+        Reservation reservation = Reservation.builder()
+                .id(10L)
+                .user(user)
+                .parkingSpace(parkingSpace)
+                .parkingLot(parkingLot)
+                .vehicle(vehicle)
+                .startTime(startTime)
+                .endTime(endTime)
+                .status(ReservationStatus.PENDING)
+                .build();
+
+        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
+
+        // Operator 99 is not assigned to parkingLot (operator id is 2)
+        assertThatThrownBy(() -> reservationService.checkInReservation(10L, 99L))
+                .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    @DisplayName("checkOutReservation: debe registrar salida y liberar espacio a AVAILABLE")
+    void checkOutReservation_shouldSucceed() {
+        parkingSpace.setStatus(SpaceStatus.OCCUPIED);
+        Reservation reservation = Reservation.builder()
+                .id(10L)
+                .user(user)
+                .parkingSpace(parkingSpace)
+                .parkingLot(parkingLot)
+                .vehicle(vehicle)
+                .startTime(startTime)
+                .endTime(endTime)
+                .status(ReservationStatus.ACTIVE)
+                .confirmationCode("PKO-CHECKOUT1")
+                .totalAmount(new BigDecimal("15.00"))
+                .currency("PEN")
+                .build();
+
+        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReservationResponse response = reservationService.checkOutReservation(10L, 2L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo("COMPLETED");
+        assertThat(parkingSpace.getStatus()).isEqualTo(SpaceStatus.AVAILABLE);
+        assertThat(parkingLot.getAvailableSpaces()).isEqualTo(11);
     }
 }

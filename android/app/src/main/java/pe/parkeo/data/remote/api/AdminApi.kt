@@ -20,6 +20,12 @@ interface AdminApi {
         @Body body: UpdateParkingLotStatusRequestDto
     ): Response<ApiResponseDto<ParkingLotDto>>
 
+    @PUT("api/admin/parking-lots/{id}/operator")
+    suspend fun assignOperator(
+        @Path("id") id: Long,
+        @Body body: AssignOperatorRequestDto
+    ): Response<ApiResponseDto<ParkingLotDto>>
+
     @DELETE("api/admin/parking-lots/{id}")
     suspend fun deactivateParkingLot(
         @Path("id") id: Long

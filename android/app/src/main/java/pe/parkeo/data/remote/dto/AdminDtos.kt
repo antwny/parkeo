@@ -24,3 +24,9 @@ data class UpdateParkingLotStatusRequestDto(
     @SerialName("isOpen") val isOpen: Boolean? = null,
     @SerialName("isActive") val isActive: Boolean? = null
 )
+
+@Serializable
+data class AssignOperatorRequestDto(
+    @SerialName("operatorId") val operatorId: Long
+)
+

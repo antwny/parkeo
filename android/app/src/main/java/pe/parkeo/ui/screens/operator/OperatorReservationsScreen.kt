@@ -36,9 +36,27 @@ fun OperatorReservationsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val extended = ParkeoTheme.colors
     val snackbarHostState = remember { SnackbarHostState() }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Por Ingresar", "En Cochera", "Finalizadas", "Todas")
+    val countPorIngresar = remember(uiState.reservations) {
+        uiState.reservations.count { it.status in listOf("PENDING", "CONFIRMED") }
+    }
+    val countEnCochera = remember(uiState.reservations) {
+        uiState.reservations.count { it.status == "ACTIVE" }
+    }
+    val countFinalizadas = remember(uiState.reservations) {
+        uiState.reservations.count { it.status in listOf("COMPLETED", "CANCELLED", "NO_SHOW") }
+    }
+    val countTodas = remember(uiState.reservations) {
+        uiState.reservations.size
+    }
+    val tabLabels = listOf(
+        "Por Ingresar ($countPorIngresar)",
+        "En Cochera ($countEnCochera)",
+        "Finalizadas ($countFinalizadas)",
+        "Todas ($countTodas)"
+    )
     var searchQuery by remember { mutableStateOf("") }
 
     var reservationToConfirmAction by remember { mutableStateOf<Pair<ReservationDto, String>?>(null) }
@@ -152,20 +170,20 @@ fun OperatorReservationsScreen(
                 )
             }
 
-            // Pestañas de estado
+            // Pestañas de estado con contadores dinámicos
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = extended.surface1,
                 contentColor = extended.accent
             ) {
-                tabs.forEachIndexed { index, title ->
+                tabLabels.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
                         text = {
                             Text(
                                 text = title,
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
                             )
                         }
@@ -243,6 +261,7 @@ fun OperatorReservationsScreen(
                     onClick = {
                         val id = reservation.id
                         reservationToConfirmAction = null
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                         if (isCheckIn) {
                             viewModel.checkIn(id)
                         } else {
