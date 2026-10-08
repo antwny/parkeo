@@ -11,7 +11,6 @@ import pe.parkeo.entity.Vehicle;
 import pe.parkeo.entity.VehicleType;
 import pe.parkeo.exception.ConflictException;
 import pe.parkeo.exception.ResourceNotFoundException;
-import pe.parkeo.exception.UnauthorizedException;
 import pe.parkeo.repository.UserRepository;
 import pe.parkeo.repository.VehicleRepository;
 import pe.parkeo.repository.VehicleTypeRepository;
@@ -36,8 +35,8 @@ public class VehicleService {
 
     @Transactional
     public VehicleResponse createVehicle(Long userId, CreateVehicleRequest request) {
-        // Normalize plate
-        String plate = request.getLicensePlate().toUpperCase().trim();
+        // Normalizar formato de placa peruana (ej: ABC-123)
+        String plate = normalizeLicensePlate(request.getLicensePlate());
 
         if (vehicleRepository.existsByLicensePlateAndIsActiveTrue(plate)) {
             throw new ConflictException("Ya existe un vehículo registrado con la placa: " + plate);
@@ -53,9 +52,9 @@ public class VehicleService {
                 .user(user)
                 .vehicleType(vehicleType)
                 .licensePlate(plate)
-                .brand(request.getBrand())
-                .model(request.getModel())
-                .color(request.getColor())
+                .brand(sanitizeText(request.getBrand()))
+                .model(sanitizeText(request.getModel()))
+                .color(sanitizeText(request.getColor()))
                 .year(request.getYear())
                 .isActive(true)
                 .build();
@@ -73,9 +72,9 @@ public class VehicleService {
                     .orElseThrow(() -> new ResourceNotFoundException("Tipo de vehículo", request.getVehicleTypeId()));
             vehicle.setVehicleType(vehicleType);
         }
-        if (request.getBrand() != null) vehicle.setBrand(request.getBrand());
-        if (request.getModel() != null) vehicle.setModel(request.getModel());
-        if (request.getColor() != null) vehicle.setColor(request.getColor());
+        if (request.getBrand() != null) vehicle.setBrand(sanitizeText(request.getBrand()));
+        if (request.getModel() != null) vehicle.setModel(sanitizeText(request.getModel()));
+        if (request.getColor() != null) vehicle.setColor(sanitizeText(request.getColor()));
         if (request.getYear() != null) vehicle.setYear(request.getYear());
 
         return mapToResponse(vehicleRepository.save(vehicle));
@@ -92,6 +91,26 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public List<VehicleType> getVehicleTypes() {
         return vehicleTypeRepository.findByIsActiveTrue();
+    }
+
+    // --- MÉTODOS DE NORMALIZACIÓN Y SANITIZACIÓN ---
+
+    private String normalizeLicensePlate(String rawPlate) {
+        if (rawPlate == null) return null;
+        // Remueve todo lo que no sea letra o número y convierte a mayúsculas
+        String clean = rawPlate.toUpperCase().replaceAll("[^A-Z0-9]", "");
+        
+        // Si ingresaron 6 caracteres (ej. ABC123), inserta el guion
+        if (clean.length() == 6) {
+            return clean.substring(0, 3) + "-" + clean.substring(3);
+        }
+        return clean;
+    }
+
+    private String sanitizeText(String input) {
+        if (input == null) return null;
+        // Elimina espacios múltiples y limpia extremos
+        return input.trim().replaceAll("\\s+", " ");
     }
 
     private VehicleResponse mapToResponse(Vehicle vehicle) {

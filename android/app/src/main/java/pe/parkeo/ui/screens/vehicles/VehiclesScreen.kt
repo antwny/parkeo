@@ -1,7 +1,5 @@
 package pe.parkeo.ui.screens.vehicles
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -141,7 +138,7 @@ private fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
                 .padding(Dimens.spacingLg),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Peruvian License Plate Graphic Element
+            // Insignia estilizada de matrícula peruana
             LicensePlateBadge(plate = vehicle.licensePlate)
 
             Spacer(Modifier.width(14.dp))
@@ -210,7 +207,6 @@ private fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
 @Composable
 private fun LicensePlateBadge(plate: String) {
     val extended = ParkeoTheme.colors
-    // Technical license plate box inspired by Peruvian standard plate
     Surface(
         color = extended.surface3,
         shape = RoundedCornerShape(6.dp),
@@ -220,7 +216,6 @@ private fun LicensePlateBadge(plate: String) {
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Blue header strip for "PERÚ"
             Text(
                 text = "PERÚ",
                 fontSize = 8.sp,
@@ -237,6 +232,16 @@ private fun LicensePlateBadge(plate: String) {
                 color = extended.textPrimary
             )
         }
+    }
+}
+
+// Helper para formatear la placa al estándar peruano
+private fun formatPeruvianPlate(input: String): String {
+    val clean = input.uppercase().replace(Regex("[^A-Z0-9]"), "")
+    return if (clean.length > 3) {
+        "${clean.take(3)}-${clean.drop(3).take(3)}"
+    } else {
+        clean.take(6)
     }
 }
 
@@ -258,6 +263,9 @@ private fun AddVehicleDialog(
         mutableStateOf<Long?>(vehicleTypes.firstOrNull()?.id)
     }
     var expanded by remember { mutableStateOf(false) }
+
+    // Regex que restringe caracteres especiales
+    val alphaNumericRegex = Regex("^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]*$")
 
     LaunchedEffect(vehicleTypes) {
         if (selectedTypeId == null && vehicleTypes.isNotEmpty()) {
@@ -313,7 +321,11 @@ private fun AddVehicleDialog(
 
                 ParkeoTextField(
                     value = plate,
-                    onValueChange = { plate = it.uppercase() },
+                    onValueChange = { input ->
+                        if (input.length <= 7) {
+                            plate = formatPeruvianPlate(input)
+                        }
+                    },
                     label = "Placa *",
                     placeholder = "ABC-123",
                     modifier = Modifier.fillMaxWidth()
@@ -321,7 +333,7 @@ private fun AddVehicleDialog(
 
                 ParkeoTextField(
                     value = brand,
-                    onValueChange = { brand = it },
+                    onValueChange = { if (it.matches(alphaNumericRegex)) brand = it },
                     label = "Marca",
                     placeholder = "Toyota",
                     modifier = Modifier.fillMaxWidth()
@@ -329,7 +341,7 @@ private fun AddVehicleDialog(
 
                 ParkeoTextField(
                     value = model,
-                    onValueChange = { model = it },
+                    onValueChange = { if (it.matches(alphaNumericRegex)) model = it },
                     label = "Modelo",
                     placeholder = "Corolla",
                     modifier = Modifier.fillMaxWidth()
@@ -337,7 +349,7 @@ private fun AddVehicleDialog(
 
                 ParkeoTextField(
                     value = color,
-                    onValueChange = { color = it },
+                    onValueChange = { if (it.matches(alphaNumericRegex)) color = it },
                     label = "Color",
                     placeholder = "Gris Metálico",
                     modifier = Modifier.fillMaxWidth()
@@ -390,7 +402,7 @@ private fun AddVehicleDialog(
                         )
                     }
                 },
-                enabled = plate.isNotBlank() && selectedTypeId != null && !isLoading,
+                enabled = plate.length == 7 && selectedTypeId != null && !isLoading,
                 style = ParkeoButtonStyle.Primary,
                 modifier = Modifier.height(Dimens.buttonHeightDefault)
             )

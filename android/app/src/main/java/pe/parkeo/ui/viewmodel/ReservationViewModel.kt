@@ -14,7 +14,9 @@ data class ReservationUiState(
     val currentReservation: ReservationDto? = null,
     val error: String? = null,
     val successMessage: String? = null,
-    val reservationCreated: Boolean = false
+    val reservationCreated: Boolean = false,
+    // Id de la última reserva cancelada con éxito (la pantalla lo usa para cancelar sus recordatorios)
+    val cancelledReservationId: Long? = null
 )
 
 class ReservationViewModel(
@@ -24,7 +26,11 @@ class ReservationViewModel(
     private val _uiState = MutableStateFlow(ReservationUiState())
     val uiState: StateFlow<ReservationUiState> = _uiState.asStateFlow()
 
+    // Última pestaña consultada, para recargar la misma después de cancelar
+    private var lastStatus: String? = null
+
     fun loadReservations(status: String? = null) {
+        lastStatus = status
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             when (val result = reservationRepository.getMyReservations(status)) {
@@ -35,10 +41,29 @@ class ReservationViewModel(
         }
     }
 
-    fun createReservation(parkingSpaceId: Long, vehicleId: Long, startTime: String, endTime: String) {
+    /**
+     * parkingSpaceId = null -> el servidor asigna un espacio libre del estacionamiento.
+     * startTime / endTime en formato ISO yyyy-MM-dd'T'HH:mm:ss (hora de Lima).
+     */
+    fun createReservation(
+        parkingLotId: Long,
+        parkingSpaceId: Long? = null,
+        vehicleId: Long,
+        startTime: String,
+        endTime: String,
+        notes: String? = null
+    ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            when (val result = reservationRepository.createReservation(parkingSpaceId, vehicleId, startTime, endTime)) {
+            val result = reservationRepository.createReservation(
+                parkingLotId = parkingLotId,
+                parkingSpaceId = parkingSpaceId,
+                vehicleId = vehicleId,
+                startTime = startTime,
+                endTime = endTime,
+                notes = notes
+            )
+            when (result) {
                 is Result.Success -> _uiState.update {
                     it.copy(isLoading = false, currentReservation = result.data, reservationCreated = true)
                 }
@@ -48,10 +73,15 @@ class ReservationViewModel(
         }
     }
 
-    fun cancelReservation(id: Long) {
+    fun cancelReservation(id: Long, reason: String? = null) {
         viewModelScope.launch {
-            when (val result = reservationRepository.cancelReservation(id)) {
-                is Result.Success -> loadReservations()
+            when (val result = reservationRepository.cancelReservation(id, reason)) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(successMessage = "Reserva cancelada", cancelledReservationId = id)
+                    }
+                    loadReservations(lastStatus)
+                }
                 is Result.Error -> _uiState.update { it.copy(error = result.message) }
                 else -> {}
             }
@@ -59,6 +89,13 @@ class ReservationViewModel(
     }
 
     fun clearMessages() {
-        _uiState.update { it.copy(error = null, successMessage = null, reservationCreated = false) }
+        _uiState.update {
+            it.copy(
+                error = null,
+                successMessage = null,
+                reservationCreated = false,
+                cancelledReservationId = null
+            )
+        }
     }
 }

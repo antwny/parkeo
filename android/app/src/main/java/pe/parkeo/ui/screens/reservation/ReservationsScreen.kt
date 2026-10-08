@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +21,8 @@ import pe.parkeo.data.remote.dto.ReservationDto
 import pe.parkeo.ui.components.*
 import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.ReservationViewModel
+import pe.parkeo.util.DirectionsButton
+import pe.parkeo.util.ReminderScheduler
 
 @Composable
 fun ReservationsScreen(
@@ -28,13 +31,22 @@ fun ReservationsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val extended = ParkeoTheme.colors
+    val context = LocalContext.current
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Próximas", "Activas", "Historial")
-    val statusFilters = listOf("PENDING,CONFIRMED", "ACTIVE", "COMPLETED,CANCELLED")
+    val statusFilters = listOf("PENDING,CONFIRMED", "ACTIVE", "COMPLETED,CANCELLED,NO_SHOW")
 
     LaunchedEffect(selectedTab) {
         viewModel.loadReservations(statusFilters[selectedTab])
+    }
+
+    // Cuando el ViewModel confirma una cancelación, se apagan sus recordatorios
+    LaunchedEffect(uiState.cancelledReservationId) {
+        uiState.cancelledReservationId?.let { id ->
+            ReminderScheduler.cancel(context, id)
+            viewModel.clearMessages()
+        }
     }
 
     Scaffold(
@@ -191,6 +203,7 @@ private fun ReservationItemCard(
                         "ACTIVE" -> "En curso"
                         "COMPLETED" -> "Completada"
                         "CANCELLED" -> "Cancelada"
+                        "NO_SHOW" -> "No se presentó"
                         else -> reservation.status
                     }
                 )
@@ -265,6 +278,15 @@ private fun ReservationItemCard(
                         softWrap = false
                     )
                 }
+            }
+
+            // Ruta hasta la cochera (solo si la reserva sigue vigente y hay coordenadas)
+            val lat = reservation.parkingLotLatitude
+            val lng = reservation.parkingLotLongitude
+            if (lat != null && lng != null &&
+                reservation.status in listOf("PENDING", "CONFIRMED", "ACTIVE")
+            ) {
+                DirectionsButton(latitude = lat, longitude = lng)
             }
 
             if (canCancel) {

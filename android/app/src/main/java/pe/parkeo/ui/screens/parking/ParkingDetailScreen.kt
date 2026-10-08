@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import pe.parkeo.ui.components.*
 import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.ParkingDetailViewModel
+import pe.parkeo.util.DirectionsButton
 
 @Composable
 fun ParkingDetailScreen(
@@ -240,6 +241,13 @@ fun ParkingDetailScreen(
                                         )
                                     }
                                 }
+                            }
+
+                            // Ruta hasta la cochera (Google Maps)
+                            val lat = parking.latitude
+                            val lng = parking.longitude
+                            if (lat != null && lng != null) {
+                                DirectionsButton(latitude = lat, longitude = lng)
                             }
 
                             parking.phone?.let { phone ->

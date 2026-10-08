@@ -19,5 +19,8 @@ interface ReservationApi {
     suspend fun createReservation(@Body request: CreateReservationRequestDto): Response<ApiResponseDto<ReservationDto>>
 
     @PATCH("api/reservations/{id}/cancel")
-    suspend fun cancelReservation(@Path("id") id: Long): Response<ApiResponseDto<ReservationDto>>
+    suspend fun cancelReservation(
+        @Path("id") id: Long,
+        @Body body: CancelReservationRequestDto = CancelReservationRequestDto()
+    ): Response<ApiResponseDto<ReservationDto>>
 }
