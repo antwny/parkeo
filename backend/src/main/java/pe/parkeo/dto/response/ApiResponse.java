@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. DTO serializable; representa datos que cruzan el contrato HTTP entre la app y el backend.
 package pe.parkeo.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -20,6 +21,7 @@ public class ApiResponse<T> {
         this.timestamp = LocalDateTime.now();
     }
 
+    /** Ejecuta la operación indicada por el nombre: ok. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public static <T> ApiResponse<T> ok(T data) {
         ApiResponse<T> response = new ApiResponse<>();
         response.setSuccess(true);
@@ -28,6 +30,7 @@ public class ApiResponse<T> {
         return response;
     }
 
+    /** Ejecuta la operación indicada por el nombre: ok. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public static <T> ApiResponse<T> ok(String message, T data) {
         ApiResponse<T> response = new ApiResponse<>();
         response.setSuccess(true);
@@ -41,6 +44,7 @@ public class ApiResponse<T> {
         return ok(message, data);
     }
 
+    /** Ejecuta la operación indicada por el nombre: error. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public static <T> ApiResponse<T> error(String message) {
         ApiResponse<T> response = new ApiResponse<>();
         response.setSuccess(false);

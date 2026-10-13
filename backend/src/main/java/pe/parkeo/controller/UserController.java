@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Controlador REST; recibe solicitudes HTTP, delega al servicio y define la respuesta del endpoint.
 package pe.parkeo.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +30,7 @@ public class UserController {
 
     @GetMapping("/me")
     @Operation(summary = "Obtener perfil del usuario autenticado")
+    /** Consulta y devuelve: get profile. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<UserResponse>> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
         Long userId = resolveUserId(userDetails);
         return ResponseEntity.ok(ApiResponse.ok(userService.getProfile(userId)));
@@ -36,6 +38,7 @@ public class UserController {
 
     @PutMapping("/me")
     @Operation(summary = "Actualizar perfil del usuario autenticado")
+    /** Actualiza el recurso o estado indicado: update profile. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody Map<String, String> body) {
@@ -52,6 +55,7 @@ public class UserController {
 
     @PatchMapping("/me/password")
     @Operation(summary = "Cambiar contraseña")
+    /** Ejecuta la operación indicada por el nombre: change password. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody Map<String, String> body) {
@@ -72,6 +76,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok("Contraseña actualizada exitosamente", null));
     }
 
+    /** Resuelve el valor o dependencia solicitada: resolve user id. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private Long resolveUserId(UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userDetails.getUsername()));

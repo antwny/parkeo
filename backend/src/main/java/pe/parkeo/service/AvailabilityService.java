@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Servicio de negocio Spring; coordina validaciones, persistencia y reglas del área indicada.
 package pe.parkeo.service;
 
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class AvailabilityService {
      * y tipo de vehículo, calculando el precio estimado y devolviendo los espacios libres.
      */
     @Transactional(readOnly = true)
+    /** Comprueba la condición indicada: check availability. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public AvailabilityResponse checkAvailability(CheckAvailabilityRequest request) {
         LocalDateTime start = request.getStartTime();
         LocalDateTime end = request.getEndTime();
@@ -103,6 +105,7 @@ public class AvailabilityService {
      * Revisa si un espacio específico está disponible en la ventana de tiempo elegida.
      */
     @Transactional(readOnly = true)
+    /** Indica si se cumple la condición indicada: is space available. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public boolean isSpaceAvailable(Long spaceId, LocalDateTime startTime, LocalDateTime endTime) {
         long overlapping = reservationRepository.countOverlapping(spaceId, startTime, endTime);
         return overlapping == 0;
@@ -112,6 +115,7 @@ public class AvailabilityService {
      * Calcula el precio total de una reserva según las tarifas aplicables (HOURLY, DAILY, FIXED).
      */
     @Transactional(readOnly = true)
+    /** Calcula el resultado a partir de los datos de entrada: calculate price. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public BigDecimal calculatePrice(Long parkingLotId, Long vehicleTypeId,
                                      LocalDateTime startTime, LocalDateTime endTime) {
         List<Tariff> tariffs = tariffRepository.findByParkingLotIdAndVehicleTypeIdAndIsActiveTrue(
@@ -159,6 +163,7 @@ public class AvailabilityService {
 
     // ─── Helpers de apoyo ──────────────────────────────────────────────────────
 
+    /** Valida las precondiciones del flujo: validate operating hours. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private void validateOperatingHours(ParkingLot lot, LocalDateTime start, LocalDateTime end) {
         if (lot.getSchedules() == null || lot.getSchedules().isEmpty()) {
             return;
@@ -187,6 +192,7 @@ public class AvailabilityService {
         }
     }
 
+    /** Transforma el dato de origen al modelo de destino: map space to response. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private ParkingSpaceResponse mapSpaceToResponse(ParkingSpace space) {
         return ParkingSpaceResponse.builder()
                 .id(space.getId())

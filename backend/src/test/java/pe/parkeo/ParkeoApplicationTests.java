@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Prueba automatizada; prepara escenario, ejecuta el comportamiento bajo prueba y verifica el resultado esperado.
 package pe.parkeo;
 
 import org.junit.jupiter.api.Test;

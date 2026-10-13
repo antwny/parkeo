@@ -1,5 +1,7 @@
 # PARKeo
 
+> 📘 **Guía de estudio para nuevos desarrolladores:** [Guía maestra de Android, Kotlin, Gradle, backend y base de datos](docs/GUIA_MAESTRA_ESTUDIANTE.md). Incluye navegación para Obsidian, explicación del flujo completo y preguntas de sustentación.
+
 > **Encuentra, reserva y gestiona tu estacionamiento — en tiempo real.**
 
 PARKeo es una aplicación móvil Android (con backend en Spring Boot) que conecta a conductores con estacionamientos disponibles en Lima, Perú. Permite consultar disponibilidad en tiempo real, hacer reservas, gestionar vehículos y navegar hasta el estacionamiento elegido — todo desde el smartphone.

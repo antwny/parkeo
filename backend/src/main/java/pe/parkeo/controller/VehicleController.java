@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Controlador REST; recibe solicitudes HTTP, delega al servicio y define la respuesta del endpoint.
 package pe.parkeo.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +33,7 @@ public class VehicleController {
 
     @GetMapping
     @Operation(summary = "Obtener mis vehículos")
+    /** Consulta y devuelve: get my vehicles. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<List<VehicleResponse>>> getMyVehicles(
             @AuthenticationPrincipal UserDetails userDetails) {
         Long userId = resolveUserId(userDetails);
@@ -40,6 +42,7 @@ public class VehicleController {
 
     @PostMapping
     @Operation(summary = "Registrar un nuevo vehículo")
+    /** Crea y devuelve: create vehicle. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<VehicleResponse>> createVehicle(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateVehicleRequest request) {
@@ -50,6 +53,7 @@ public class VehicleController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Actualizar vehículo")
+    /** Actualiza el recurso o estado indicado: update vehicle. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<VehicleResponse>> updateVehicle(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id,
@@ -61,6 +65,7 @@ public class VehicleController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Eliminar vehículo")
+    /** Elimina o desactiva el recurso indicado: delete vehicle. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<Void>> deleteVehicle(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
@@ -71,10 +76,12 @@ public class VehicleController {
 
     @GetMapping("/types")
     @Operation(summary = "Obtener tipos de vehículo disponibles")
+    /** Consulta y devuelve: get vehicle types. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<List<VehicleType>>> getVehicleTypes() {
         return ResponseEntity.ok(ApiResponse.ok(vehicleService.getVehicleTypes()));
     }
 
+    /** Resuelve el valor o dependencia solicitada: resolve user id. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private Long resolveUserId(UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userDetails.getUsername()));

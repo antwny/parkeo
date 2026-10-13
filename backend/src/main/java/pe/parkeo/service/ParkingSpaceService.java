@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Servicio de negocio Spring; coordina validaciones, persistencia y reglas del área indicada.
 package pe.parkeo.service;
 
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ public class ParkingSpaceService {
     private final ParkingSpaceRepository parkingSpaceRepository;
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get spaces by lot. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public List<ParkingSpaceResponse> getSpacesByLot(Long parkingLotId) {
         return parkingSpaceRepository.findByParkingLotId(parkingLotId).stream()
                 .map(this::mapToResponse)
@@ -26,6 +28,7 @@ public class ParkingSpaceService {
     }
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get available spaces. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public List<ParkingSpaceResponse> getAvailableSpaces(Long parkingLotId, Long vehicleTypeId) {
         return parkingSpaceRepository.findAvailable(parkingLotId, vehicleTypeId).stream()
                 .map(this::mapToResponse)
@@ -33,6 +36,7 @@ public class ParkingSpaceService {
     }
 
     @Transactional
+    /** Actualiza el recurso o estado indicado: update space status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ParkingSpaceResponse updateSpaceStatus(Long spaceId, String statusStr, String notes) {
         ParkingSpace space = parkingSpaceRepository.findById(spaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Espacio de estacionamiento", spaceId));
@@ -50,6 +54,7 @@ public class ParkingSpaceService {
         return mapToResponse(parkingSpaceRepository.save(space));
     }
 
+    /** Transforma el dato de origen al modelo de destino: map to response. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ParkingSpaceResponse mapToResponse(ParkingSpace space) {
         return ParkingSpaceResponse.builder()
                 .id(space.getId())

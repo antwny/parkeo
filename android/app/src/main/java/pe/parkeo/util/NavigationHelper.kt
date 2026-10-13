@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Utilidad transversal de la app para coordinar el comportamiento indicado por el nombre del archivo.
 package pe.parkeo.util
 
 import android.content.ActivityNotFoundException
@@ -19,6 +20,7 @@ import java.util.Locale
 
 object NavigationHelper {
 
+    /** Ejecuta la operación indicada por el nombre: open directions. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun openDirections(context: Context, latitude: Double, longitude: Double) {
         // Locale.US para que el decimal sea punto (-12.09) y no coma (-12,09)
         val coords = String.format(Locale.US, "%.6f,%.6f", latitude, longitude)

@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Configuración Spring; registra o parametriza componentes transversales del backend.
 package pe.parkeo.config;
 
 import lombok.RequiredArgsConstructor;
@@ -41,11 +42,13 @@ public class SecurityConfig {
     };
 
     @Bean
+    /** Ejecuta la operación indicada por el nombre: password encoder. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
     }
 
     @Bean
+    /** Ejecuta la operación indicada por el nombre: authentication provider. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
@@ -54,11 +57,13 @@ public class SecurityConfig {
     }
 
     @Bean
+    /** Ejecuta la operación indicada por el nombre: authentication manager. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
     @Bean
+    /** Ejecuta la operación indicada por el nombre: filter chain. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)

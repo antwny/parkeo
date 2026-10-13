@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Acceso/abstracción de datos para el área indicada; conecta operaciones de negocio con sus fuentes.
 package pe.parkeo.data.repository
 
 import pe.parkeo.data.local.SessionDataStore
@@ -11,6 +12,7 @@ class AuthRepositoryImpl(
     private val sessionDataStore: SessionDataStore
 ) : AuthRepository {
 
+    /** Autentica las credenciales y actualiza el estado de sesión: login. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun login(email: String, password: String): Result<AuthResponseDto> {
         return try {
             val response = authApi.login(LoginRequestDto(email, password))
@@ -37,6 +39,7 @@ class AuthRepositoryImpl(
         }
     }
 
+    /** Registra y devuelve: register. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun register(
         email: String,
         password: String,
@@ -71,6 +74,7 @@ class AuthRepositoryImpl(
         }
     }
 
+    /** Cierra la sesión y limpia el estado local/remoto correspondiente: logout. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun logout() {
         try {
             val refreshToken = sessionDataStore.getRefreshToken()
@@ -84,6 +88,7 @@ class AuthRepositoryImpl(
         }
     }
 
+    /** Ejecuta la operación indicada por el nombre: refresh token. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun refreshToken(): Result<AuthResponseDto> {
         return try {
             val refreshToken = sessionDataStore.getRefreshToken()
@@ -109,6 +114,7 @@ class AuthRepositoryImpl(
         }
     }
 
+    /** Indica si se cumple la condición indicada: is logged in. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun isLoggedIn(): Boolean {
         return !sessionDataStore.getAccessToken().isNullOrBlank()
     }

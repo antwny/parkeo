@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Utilidad transversal de la app para coordinar el comportamiento indicado por el nombre del archivo.
 package pe.parkeo.util
 
 sealed class Result<out T> {

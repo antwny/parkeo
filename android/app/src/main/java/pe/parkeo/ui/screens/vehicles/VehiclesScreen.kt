@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.vehicles
 
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,7 @@ import pe.parkeo.ui.viewmodel.VehicleViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+/** Ejecuta la operación indicada por el nombre: vehicles screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun VehiclesScreen(
     viewModel: VehicleViewModel,
     onNavigateBack: () -> Unit
@@ -127,6 +129,7 @@ fun VehiclesScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: vehicle card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
     val extended = ParkeoTheme.colors
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -205,6 +208,7 @@ private fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: license plate badge. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun LicensePlateBadge(plate: String) {
     val extended = ParkeoTheme.colors
     Surface(
@@ -236,6 +240,7 @@ private fun LicensePlateBadge(plate: String) {
 }
 
 // Helper para formatear la placa al estándar peruano
+/** Da formato al valor para presentación: format peruvian plate. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun formatPeruvianPlate(input: String): String {
     val clean = input.uppercase().replace(Regex("[^A-Z0-9]"), "")
     return if (clean.length > 3) {
@@ -247,6 +252,7 @@ private fun formatPeruvianPlate(input: String): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+/** Ejecuta la operación indicada por el nombre: add vehicle dialog. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun AddVehicleDialog(
     vehicleTypes: List<pe.parkeo.data.remote.dto.VehicleTypeDto>,
     isLoading: Boolean,

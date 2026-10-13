@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de interfaz reutilizable; concentra presentación y comportamiento visual común.
 package pe.parkeo.ui.components
 
 import androidx.compose.foundation.BorderStroke
@@ -14,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import pe.parkeo.ui.theme.*
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,

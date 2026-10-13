@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. ViewModel de presentación; coordina acciones del usuario y publica estado observable para la interfaz.
 package pe.parkeo.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
@@ -29,6 +30,7 @@ class ReservationViewModel(
     // Última pestaña consultada, para recargar la misma después de cancelar
     private var lastStatus: String? = null
 
+    /** Carga los datos requeridos: load reservations. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun loadReservations(status: String? = null) {
         lastStatus = status
         viewModelScope.launch {
@@ -45,6 +47,7 @@ class ReservationViewModel(
      * parkingSpaceId = null -> el servidor asigna un espacio libre del estacionamiento.
      * startTime / endTime en formato ISO yyyy-MM-dd'T'HH:mm:ss (hora de Lima).
      */
+    /** Crea y devuelve: create reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun createReservation(
         parkingLotId: Long,
         parkingSpaceId: Long? = null,
@@ -73,6 +76,7 @@ class ReservationViewModel(
         }
     }
 
+    /** Valida y cancela la reserva indicada: cancel reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun cancelReservation(id: Long, reason: String? = null) {
         viewModelScope.launch {
             when (val result = reservationRepository.cancelReservation(id, reason)) {
@@ -88,6 +92,7 @@ class ReservationViewModel(
         }
     }
 
+    /** Limpia el estado asociado: clear messages. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun clearMessages() {
         _uiState.update {
             it.copy(

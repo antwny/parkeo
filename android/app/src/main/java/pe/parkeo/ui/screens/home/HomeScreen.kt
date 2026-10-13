@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.home
 
 import android.Manifest
@@ -48,6 +49,7 @@ enum class HomeFilter(val label: String) {
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: home screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateToParkingDetail: (Long) -> Unit,

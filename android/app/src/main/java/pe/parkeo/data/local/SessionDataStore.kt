@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Implementación del módulo Parkeo identificado por el paquete y nombre de esta clase.
 package pe.parkeo.data.local
 
 import android.content.Context
@@ -26,14 +27,17 @@ class SessionDataStore(private val context: Context) {
         !prefs[Keys.ACCESS_TOKEN].isNullOrBlank()
     }
 
+    /** Consulta y devuelve: get access token. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     suspend fun getAccessToken(): String? {
         return context.dataStore.data.first()[Keys.ACCESS_TOKEN]
     }
 
+    /** Consulta y devuelve: get refresh token. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     suspend fun getRefreshToken(): String? {
         return context.dataStore.data.first()[Keys.REFRESH_TOKEN]
     }
 
+    /** Persiste el valor recibido: save session. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     suspend fun saveSession(
         accessToken: String,
         refreshToken: String,
@@ -52,6 +56,7 @@ class SessionDataStore(private val context: Context) {
         }
     }
 
+    /** Limpia el estado asociado: clear session. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     suspend fun clearSession() {
         context.dataStore.edit { prefs ->
             prefs.remove(Keys.ACCESS_TOKEN)
@@ -67,12 +72,14 @@ class SessionDataStore(private val context: Context) {
         prefs[Keys.ONBOARDING_SHOWN] ?: false
     }
 
+    /** Actualiza el valor indicado: set onboarding shown. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     suspend fun setOnboardingShown() {
         context.dataStore.edit { prefs ->
             prefs[Keys.ONBOARDING_SHOWN] = true
         }
     }
 
+    /** Consulta y devuelve: get user info. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun getUserInfo(): Flow<Triple<String, String, String>?> = context.dataStore.data.map { prefs ->
         val email = prefs[Keys.USER_EMAIL]
         if (!email.isNullOrBlank()) {

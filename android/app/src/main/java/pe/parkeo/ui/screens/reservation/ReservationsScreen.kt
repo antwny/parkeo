@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.reservation
 
 import androidx.compose.foundation.Canvas
@@ -33,6 +34,7 @@ import pe.parkeo.util.DirectionsButton
 import pe.parkeo.util.ReminderScheduler
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: reservations screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ReservationsScreen(
     viewModel: ReservationViewModel,
     onNavigateBack: () -> Unit
@@ -184,6 +186,7 @@ fun ReservationsScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: reservation item card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun ReservationItemCard(
     reservation: ReservationDto,
     onOpenBoardingPass: () -> Unit,
@@ -367,6 +370,7 @@ private fun ReservationItemCard(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: ticket boarding pass dialog. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun TicketBoardingPassDialog(
     reservation: ReservationDto,
     onDismiss: () -> Unit
@@ -527,6 +531,7 @@ private fun TicketBoardingPassDialog(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: boarding pass row. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun BoardingPassRow(
     label: String,
     value: String,
@@ -555,6 +560,7 @@ private fun BoardingPassRow(
 }
 
 @Composable
+/** Valida y cancela la reserva indicada: cancel reservation dialog. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun CancelReservationDialog(
     reservation: ReservationDto,
     onDismiss: () -> Unit,
@@ -650,6 +656,7 @@ private fun CancelReservationDialog(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: qr code matrix. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun QrCodeMatrix(
     content: String,
     modifier: Modifier = Modifier
@@ -659,6 +666,7 @@ private fun QrCodeMatrix(
         val matrix = Array(gridSize) { BooleanArray(gridSize) }
 
         // Finder patterns (7x7 con centro 3x3) en las 3 esquinas
+        /** Ejecuta la operación indicada por el nombre: mark finder. Consulte el catálogo de métodos y conceptos en la guía maestra. */
         fun markFinder(startR: Int, startC: Int) {
             for (r in 0 until 7) {
                 for (c in 0 until 7) {
@@ -714,6 +722,7 @@ private fun QrCodeMatrix(
     }
 }
 
+/** Da formato al valor para presentación: format display date. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun formatDisplayDate(raw: String): String {
     val clean = raw.take(16).replace("T", " ")
     return if (clean.length >= 10 && clean.contains("-")) {

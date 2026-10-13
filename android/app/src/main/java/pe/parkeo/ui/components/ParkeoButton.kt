@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de interfaz reutilizable; concentra presentación y comportamiento visual común.
 package pe.parkeo.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
@@ -24,6 +25,7 @@ enum class ParkeoButtonStyle {
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo button. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoButton(
     text: String,
     onClick: () -> Unit,

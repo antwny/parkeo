@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.reservation
 
 import android.content.Intent
@@ -44,6 +45,7 @@ enum class ArrivalOption(val title: String, val subtitle: String, val minutesOff
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+/** Ejecuta la operación indicada por el nombre: reservation create screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ReservationCreateScreen(
     parkingId: Long,
     parkingViewModel: ParkingDetailViewModel,
@@ -874,6 +876,7 @@ fun ReservationCreateScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+/** Ejecuta la operación indicada por el nombre: inline add vehicle dialog. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun InlineAddVehicleDialog(
     vehicleTypes: List<VehicleTypeDto>,
     isLoading: Boolean,

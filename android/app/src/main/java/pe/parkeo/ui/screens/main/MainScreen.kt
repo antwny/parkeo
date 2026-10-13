@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.main
 
 import androidx.activity.compose.BackHandler
@@ -29,6 +30,7 @@ import pe.parkeo.ui.theme.ParkeoTheme
 import pe.parkeo.ui.viewmodel.*
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: main screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun MainScreen(
     authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel,

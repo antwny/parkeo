@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. ViewModel de presentación; coordina acciones del usuario y publica estado observable para la interfaz.
 package pe.parkeo.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
@@ -26,6 +27,7 @@ class HomeViewModel(
         loadParkingLots()
     }
 
+    /** Carga los datos requeridos: load parking lots. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun loadParkingLots() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -37,6 +39,7 @@ class HomeViewModel(
         }
     }
 
+    /** Carga los datos requeridos: load nearby parking lots. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun loadNearbyParkingLots(lat: Double, lon: Double) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -48,6 +51,7 @@ class HomeViewModel(
         }
     }
 
+    /** Ejecuta la operación indicada por el nombre: search. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun search(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
         if (query.isBlank()) {

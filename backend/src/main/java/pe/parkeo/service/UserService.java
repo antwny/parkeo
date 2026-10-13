@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Servicio de negocio Spring; coordina validaciones, persistencia y reglas del área indicada.
 package pe.parkeo.service;
 
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class UserService {
     private final AuthService authService;
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get profile. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public UserResponse getProfile(Long userId) {
         User user = userRepository.findByIdWithRoles(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", userId));
@@ -30,6 +32,7 @@ public class UserService {
     }
 
     @Transactional
+    /** Actualiza el recurso o estado indicado: update profile. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public UserResponse updateProfile(Long userId, String firstName, String lastName, String phone, String documentNumber) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", userId));
@@ -44,6 +47,7 @@ public class UserService {
     }
 
     @Transactional
+    /** Ejecuta la operación indicada por el nombre: change password. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", userId));
@@ -63,6 +67,7 @@ public class UserService {
     // ─── Admin methods ─────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get all users. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(authService::mapToUserResponse)
@@ -70,6 +75,7 @@ public class UserService {
     }
 
     @Transactional
+    /** Actualiza el valor indicado: set user status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public UserResponse setUserStatus(Long userId, boolean isActive) {
         User user = userRepository.findByIdWithRoles(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", userId));

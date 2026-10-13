@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.profile
 
 import androidx.compose.foundation.background
@@ -24,6 +25,7 @@ import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: profile screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ProfileScreen(
     viewModel: AuthViewModel,
     onNavigateBack: () -> Unit,
@@ -442,6 +444,7 @@ fun ProfileScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: profile option tile. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun ProfileOptionTile(
     icon: ImageVector,
     title: String,

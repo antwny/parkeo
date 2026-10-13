@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de interfaz reutilizable; concentra presentación y comportamiento visual común.
 package pe.parkeo.ui.components
 
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import pe.parkeo.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo top bar. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoTopBar(
     title: String,
     modifier: Modifier = Modifier,

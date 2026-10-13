@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. DTO serializable; representa datos que cruzan el contrato HTTP entre la app y el backend.
 package pe.parkeo.dto.response;
 
 import lombok.*;
@@ -24,6 +25,7 @@ public class UserResponse {
     private LocalDateTime createdAt;
     private LocalDateTime lastLoginAt;
 
+    /** Consulta y devuelve: get role. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public String getRole() {
         return (roles != null && !roles.isEmpty()) ? roles.get(0) : "ROLE_USER";
     }

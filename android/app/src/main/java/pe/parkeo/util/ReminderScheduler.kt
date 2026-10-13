@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Utilidad transversal de la app para coordinar el comportamiento indicado por el nombre del archivo.
 package pe.parkeo.util
 
 import android.content.Context
@@ -17,6 +18,7 @@ object ReminderScheduler {
     private const val START_MINUTES_BEFORE = 15L
     private const val END_MINUTES_BEFORE = 10L
 
+    /** Programa el trabajo indicado: schedule. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun schedule(
         context: Context,
         reservationId: Long,
@@ -51,6 +53,7 @@ object ReminderScheduler {
         workManager.cancelUniqueWork(workName(ReservationReminderWorker.KIND_END, reservationId))
     }
 
+    /** Ejecuta la operación indicada por el nombre: enqueue. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private fun enqueue(
         context: Context,
         reservationId: Long,
@@ -84,9 +87,11 @@ object ReminderScheduler {
         )
     }
 
+    /** Ejecuta la operación indicada por el nombre: work name. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private fun workName(kind: String, reservationId: Long) =
         "reservation-reminder-${kind.lowercase()}-$reservationId"
 
+    /** Interpreta el dato de entrada y devuelve su forma normalizada: parse. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private fun parse(iso: String): LocalDateTime? =
         try {
             LocalDateTime.parse(iso)

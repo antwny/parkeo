@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Servicio de negocio Spring; coordina validaciones, persistencia y reglas del área indicada.
 package pe.parkeo.service;
 
 import lombok.RequiredArgsConstructor;
@@ -30,12 +31,14 @@ public class ParkingLotService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get all active. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Page<ParkingLotResponse> getAllActive(Pageable pageable) {
         return parkingLotRepository.findByIsActiveTrue(pageable)
                 .map(this::mapToResponse);
     }
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get by id. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ParkingLotDetailResponse getById(Long id) {
         ParkingLot lot = parkingLotRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", id));
@@ -43,6 +46,7 @@ public class ParkingLotService {
     }
 
     @Transactional(readOnly = true)
+    /** Busca y devuelve: find nearby. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public List<ParkingLotResponse> findNearby(double lat, double lon, double radiusKm) {
         return parkingLotRepository.findNearby(lat, lon, radiusKm).stream()
                 .map(lot -> {
@@ -56,12 +60,14 @@ public class ParkingLotService {
     }
 
     @Transactional(readOnly = true)
+    /** Ejecuta la operación indicada por el nombre: search. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Page<ParkingLotResponse> search(String query, Pageable pageable) {
         return parkingLotRepository.searchByNameOrAddress(query, pageable)
                 .map(this::mapToResponse);
     }
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get by operator. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public List<ParkingLotResponse> getByOperator(Long operatorId) {
         return parkingLotRepository.findByOperatorIdAndIsActiveTrue(operatorId).stream()
                 .map(this::mapToResponse)
@@ -69,12 +75,14 @@ public class ParkingLotService {
     }
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get all for admin. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Page<ParkingLotResponse> getAllForAdmin(Pageable pageable) {
         return parkingLotRepository.findAll(pageable)
                 .map(this::mapToResponse);
     }
 
     @Transactional
+    /** Actualiza el recurso o estado indicado: update lot status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ParkingLotResponse updateLotStatus(Long id, Boolean isOpen, Boolean isActive) {
         ParkingLot lot = parkingLotRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", id));
@@ -84,6 +92,7 @@ public class ParkingLotService {
     }
 
     @Transactional
+    /** Asigna el recurso al destino indicado: assign operator. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ParkingLotResponse assignOperator(Long lotId, Long operatorId) {
         ParkingLot lot = parkingLotRepository.findById(lotId)
                 .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", lotId));
@@ -99,6 +108,7 @@ public class ParkingLotService {
 
     // ─── Mapping ──────────────────────────────────────────────────────────────
 
+    /** Transforma el dato de origen al modelo de destino: map to response. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private ParkingLotResponse mapToResponse(ParkingLot lot) {
         Long operatorId = lot.getOperator() != null ? lot.getOperator().getId() : null;
         String operatorName = lot.getOperator() != null 
@@ -124,6 +134,7 @@ public class ParkingLotService {
                 .build();
     }
 
+    /** Transforma el dato de origen al modelo de destino: map to detail response. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private ParkingLotDetailResponse mapToDetailResponse(ParkingLot lot) {
         List<Schedule> schedules = scheduleRepository.findByParkingLotId(lot.getId());
         List<Tariff> tariffs = tariffRepository.findByParkingLotIdAndIsActiveTrue(lot.getId());

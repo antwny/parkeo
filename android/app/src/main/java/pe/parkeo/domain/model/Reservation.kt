@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Contrato o modelo del dominio; expresa conceptos/reglas de Parkeo sin acoplarse a HTTP ni a Android.
 package pe.parkeo.domain.model
 
 data class Reservation(
@@ -15,6 +16,7 @@ data class Reservation(
 enum class ReservationStatus {
     PENDING, CONFIRMED, ACTIVE, COMPLETED, CANCELLED, NO_SHOW;
 
+    /** Ejecuta la operación indicada por el nombre: display name. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun displayName(): String = when (this) {
         PENDING -> "Pendiente"
         CONFIRMED -> "Confirmada"

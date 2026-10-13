@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Entidad JPA; mapea el concepto del dominio a persistencia relacional y sus relaciones.
 package pe.parkeo.entity;
 
 import jakarta.persistence.*;
@@ -40,10 +41,12 @@ public class RefreshToken {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** Indica si se cumple la condición indicada: is expired. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(expiresAt);
     }
 
+    /** Indica si se cumple la condición indicada: is valid. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public boolean isValid() {
         return !isRevoked && !isExpired();
     }

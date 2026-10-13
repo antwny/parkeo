@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Configuración Spring; registra o parametriza componentes transversales del backend.
 package pe.parkeo.config;
 
 import lombok.Getter;

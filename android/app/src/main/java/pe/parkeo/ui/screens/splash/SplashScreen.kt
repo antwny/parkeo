@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.splash
 
 import androidx.compose.animation.*
@@ -19,6 +20,7 @@ import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.SplashViewModel
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: splash screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun SplashScreen(
     viewModel: SplashViewModel,
     onNavigateToOnboarding: () -> Unit,

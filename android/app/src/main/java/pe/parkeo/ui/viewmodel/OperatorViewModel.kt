@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. ViewModel de presentación; coordina acciones del usuario y publica estado observable para la interfaz.
 package pe.parkeo.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
@@ -29,6 +30,7 @@ class OperatorViewModel(
     private val _uiState = MutableStateFlow(OperatorUiState())
     val uiState: StateFlow<OperatorUiState> = _uiState.asStateFlow()
 
+    /** Carga los datos requeridos: load my parking lots. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun loadMyParkingLots(refresh: Boolean = false) {
         viewModelScope.launch {
             if (refresh) {
@@ -70,11 +72,13 @@ class OperatorViewModel(
         }
     }
 
+    /** Ejecuta la operación indicada por el nombre: select parking lot. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun selectParkingLot(lot: ParkingLotDto) {
         _uiState.update { it.copy(selectedLot = lot) }
         loadSpacesAndReservations(lot.id)
     }
 
+    /** Carga los datos requeridos: load spaces and reservations. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun loadSpacesAndReservations(lotId: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -103,6 +107,7 @@ class OperatorViewModel(
         }
     }
 
+    /** Actualiza el recurso o estado indicado: update space status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun updateSpaceStatus(spaceId: Long, newStatus: String, notes: String? = null) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -127,6 +132,7 @@ class OperatorViewModel(
         }
     }
 
+    /** Comprueba la condición indicada: check in. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun checkIn(reservationId: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -153,6 +159,7 @@ class OperatorViewModel(
         }
     }
 
+    /** Comprueba la condición indicada: check out. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun checkOut(reservationId: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -179,10 +186,12 @@ class OperatorViewModel(
         }
     }
 
+    /** Actualiza el valor indicado: set search query. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun setSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
     }
 
+    /** Limpia el estado asociado: clear messages. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun clearMessages() {
         _uiState.update { it.copy(error = null, successMessage = null) }
     }

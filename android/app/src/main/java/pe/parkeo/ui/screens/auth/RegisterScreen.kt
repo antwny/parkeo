@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.auth
 
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,7 @@ import pe.parkeo.ui.theme.ParkeoTheme
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
 @Composable
+/** Registra y devuelve: register screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun RegisterScreen(
     viewModel: AuthViewModel,
     onRegisterSuccess: () -> Unit,
@@ -259,6 +261,7 @@ fun RegisterScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: password requirement row. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun PasswordRequirementRow(
     label: String,
     isMet: Boolean

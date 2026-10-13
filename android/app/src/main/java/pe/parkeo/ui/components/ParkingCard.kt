@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de interfaz reutilizable; concentra presentación y comportamiento visual común.
 package pe.parkeo.ui.components
 
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import pe.parkeo.data.remote.dto.ParkingLotDto
 import pe.parkeo.ui.theme.*
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parking card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkingCard(
     parking: ParkingLotDto,
     onClick: () -> Unit,

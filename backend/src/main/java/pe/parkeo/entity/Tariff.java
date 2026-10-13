@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Entidad JPA; mapea el concepto del dominio a persistencia relacional y sus relaciones.
 package pe.parkeo.entity;
 
 import jakarta.persistence.*;

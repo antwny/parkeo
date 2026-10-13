@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. DTO serializable; representa datos que cruzan el contrato HTTP entre la app y el backend.
 package pe.parkeo.dto.response;
 
 import lombok.*;
@@ -22,6 +23,7 @@ public class VehicleResponse {
     private Boolean isActive;
     private LocalDateTime createdAt;
 
+    /** Consulta y devuelve: get vehicle type. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public java.util.Map<String, Object> getVehicleType() {
         if (vehicleTypeId == null && vehicleTypeName == null) return null;
         return java.util.Map.of(

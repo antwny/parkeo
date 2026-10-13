@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Controlador REST; recibe solicitudes HTTP, delega al servicio y define la respuesta del endpoint.
 package pe.parkeo.controller;
 
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ public class AvailabilityController {
     private final AvailabilityService availabilityService;
 
     @PostMapping("/check")
+    /** Comprueba la condición indicada: check availability. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<AvailabilityResponse>> checkAvailability(
             @Valid @RequestBody CheckAvailabilityRequest request) {
 

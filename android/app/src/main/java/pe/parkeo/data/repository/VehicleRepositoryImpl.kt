@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Acceso/abstracción de datos para el área indicada; conecta operaciones de negocio con sus fuentes.
 package pe.parkeo.data.repository
 
 import pe.parkeo.data.remote.api.VehicleApi
@@ -9,6 +10,7 @@ class VehicleRepositoryImpl(
     private val vehicleApi: VehicleApi
 ) : VehicleRepository {
 
+    /** Consulta y devuelve: get my vehicles. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun getMyVehicles(): Result<List<VehicleDto>> {
         return try {
             val response = vehicleApi.getMyVehicles()
@@ -20,6 +22,7 @@ class VehicleRepositoryImpl(
         }
     }
 
+    /** Crea y devuelve: create vehicle. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun createVehicle(
         licensePlate: String,
         brand: String?,
@@ -45,6 +48,7 @@ class VehicleRepositoryImpl(
         }
     }
 
+    /** Actualiza el recurso o estado indicado: update vehicle. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun updateVehicle(
         id: Long,
         licensePlate: String,
@@ -71,6 +75,7 @@ class VehicleRepositoryImpl(
         }
     }
 
+    /** Elimina o desactiva el recurso indicado: delete vehicle. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun deleteVehicle(id: Long): Result<Unit> {
         return try {
             val response = vehicleApi.deleteVehicle(id)
@@ -82,6 +87,7 @@ class VehicleRepositoryImpl(
         }
     }
 
+    /** Consulta y devuelve: get vehicle types. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun getVehicleTypes(): Result<List<VehicleTypeDto>> {
         return try {
             val response = vehicleApi.getVehicleTypes()

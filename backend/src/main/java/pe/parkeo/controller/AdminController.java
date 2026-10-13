@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Controlador REST; recibe solicitudes HTTP, delega al servicio y define la respuesta del endpoint.
 package pe.parkeo.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,12 +45,14 @@ public class AdminController {
 
     @GetMapping("/users")
     @Operation(summary = "Listar todos los usuarios")
+    /** Consulta y devuelve: get all users. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
         return ResponseEntity.ok(ApiResponse.ok(userService.getAllUsers()));
     }
 
     @PutMapping("/users/{id}/status")
     @Operation(summary = "Activar o desactivar usuario")
+    /** Actualiza el valor indicado: set user status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<UserResponse>> setUserStatus(
             @PathVariable Long id,
             @RequestBody Map<String, Boolean> body) {
@@ -64,6 +67,7 @@ public class AdminController {
 
     @GetMapping("/parking-lots")
     @Operation(summary = "Listar todos los estacionamientos (incluye inactivos)")
+    /** Consulta y devuelve: get all parking lots. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<Page<ParkingLotResponse>>> getAllParkingLots(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -73,6 +77,7 @@ public class AdminController {
 
     @PutMapping("/parking-lots/{id}/status")
     @Operation(summary = "Cambiar estado de estacionamiento (abierto/activo)")
+    /** Actualiza el valor indicado: set parking lot status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<ParkingLotResponse>> setParkingLotStatus(
             @PathVariable Long id,
             @RequestBody Map<String, Boolean> body) {
@@ -83,6 +88,7 @@ public class AdminController {
 
     @PutMapping("/parking-lots/{id}/operator")
     @Operation(summary = "Asignar operador a un estacionamiento")
+    /** Asigna el recurso al destino indicado: assign operator. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<ParkingLotResponse>> assignOperator(
             @PathVariable Long id,
             @RequestBody Map<String, Long> body) {
@@ -93,6 +99,7 @@ public class AdminController {
 
     @DeleteMapping("/parking-lots/{id}")
     @Operation(summary = "Desactivar estacionamiento (soft delete)")
+    /** Ejecuta la operación indicada por el nombre: deactivate parking lot. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<Void>> deactivateParkingLot(@PathVariable Long id) {
         parkingLotService.updateLotStatus(id, null, false);
         return ResponseEntity.ok(ApiResponse.ok("Estacionamiento desactivado", null));
@@ -102,6 +109,7 @@ public class AdminController {
 
     @GetMapping("/statistics")
     @Operation(summary = "Estadísticas generales del sistema")
+    /** Consulta y devuelve: get statistics. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<Map<String, Object>>> getStatistics() {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalParkingLots", parkingLotRepository.count());

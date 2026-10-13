@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. ViewModel de presentación; coordina acciones del usuario y publica estado observable para la interfaz.
 package pe.parkeo.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
@@ -29,6 +30,7 @@ class VehicleViewModel(
         loadVehicleTypes()
     }
 
+    /** Carga los datos requeridos: load vehicles. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun loadVehicles() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -40,6 +42,7 @@ class VehicleViewModel(
         }
     }
 
+    /** Carga los datos requeridos: load vehicle types. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun loadVehicleTypes() {
         viewModelScope.launch {
             when (val result = vehicleRepository.getVehicleTypes()) {
@@ -49,6 +52,7 @@ class VehicleViewModel(
         }
     }
 
+    /** Ejecuta la operación indicada por el nombre: add vehicle. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun addVehicle(licensePlate: String, brand: String?, model: String?, color: String?, vehicleTypeId: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -63,6 +67,7 @@ class VehicleViewModel(
         }
     }
 
+    /** Elimina o desactiva el recurso indicado: delete vehicle. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun deleteVehicle(id: Long) {
         viewModelScope.launch {
             when (vehicleRepository.deleteVehicle(id)) {
@@ -73,6 +78,7 @@ class VehicleViewModel(
         }
     }
 
+    /** Limpia el estado asociado: clear messages. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun clearMessages() {
         _uiState.update { it.copy(error = null, successMessage = null) }
     }

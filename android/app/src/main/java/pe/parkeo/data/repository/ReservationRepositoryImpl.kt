@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Acceso/abstracción de datos para el área indicada; conecta operaciones de negocio con sus fuentes.
 package pe.parkeo.data.repository
 
 import kotlinx.serialization.json.Json
@@ -16,6 +17,7 @@ class ReservationRepositoryImpl(
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** Consulta y devuelve: get my reservations. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun getMyReservations(status: String?): Result<List<ReservationDto>> {
         return try {
             val response = reservationApi.getMyReservations(status)
@@ -27,6 +29,7 @@ class ReservationRepositoryImpl(
         }
     }
 
+    /** Consulta y devuelve: get reservation detail. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun getReservationDetail(id: Long): Result<ReservationDto> {
         return try {
             val response = reservationApi.getReservationDetail(id)
@@ -38,6 +41,7 @@ class ReservationRepositoryImpl(
         }
     }
 
+    /** Crea y devuelve: create reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun createReservation(
         parkingLotId: Long,
         parkingSpaceId: Long?,
@@ -65,6 +69,7 @@ class ReservationRepositoryImpl(
         }
     }
 
+    /** Valida y cancela la reserva indicada: cancel reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     override suspend fun cancelReservation(id: Long, reason: String?): Result<ReservationDto> {
         return try {
             val response = reservationApi.cancelReservation(id, CancelReservationRequestDto(reason))
@@ -80,6 +85,7 @@ class ReservationRepositoryImpl(
      * Cuando el backend responde 400/409/etc., el mensaje viene en el errorBody
      * (ej: "El espacio ya está reservado para el período solicitado"), no en body().
      */
+    /** Ejecuta la operación indicada por el nombre: error message. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private fun errorMessage(response: Response<*>, fallback: String): String {
         val raw = try {
             response.errorBody()?.string()

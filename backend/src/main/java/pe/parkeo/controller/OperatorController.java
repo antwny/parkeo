@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Controlador REST; recibe solicitudes HTTP, delega al servicio y define la respuesta del endpoint.
 package pe.parkeo.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,6 +46,7 @@ public class OperatorController {
 
     @GetMapping("/parking-lots")
     @Operation(summary = "Obtener estacionamientos asignados al operador")
+    /** Consulta y devuelve: get my parking lots. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<List<ParkingLotResponse>>> getMyParkingLots(
             @AuthenticationPrincipal UserDetails userDetails) {
         boolean isAdmin = userDetails.getAuthorities().stream()
@@ -59,6 +61,7 @@ public class OperatorController {
 
     @GetMapping("/parking-lots/{id}/spaces")
     @Operation(summary = "Obtener espacios de un estacionamiento")
+    /** Consulta y devuelve: get spaces. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<List<ParkingSpaceResponse>>> getSpaces(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
@@ -68,6 +71,7 @@ public class OperatorController {
 
     @PatchMapping("/spaces/{spaceId}/status")
     @Operation(summary = "Actualizar estado de un espacio")
+    /** Actualiza el recurso o estado indicado: update space status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<ParkingSpaceResponse>> updateSpaceStatus(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long spaceId,
@@ -84,6 +88,7 @@ public class OperatorController {
 
     @GetMapping("/reservations")
     @Operation(summary = "Obtener reservas de los estacionamientos del operador")
+    /** Consulta y devuelve: get reservations. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<Page<ReservationResponse>>> getReservations(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) Long parkingLotId,
@@ -104,6 +109,7 @@ public class OperatorController {
 
     @PatchMapping("/reservations/{id}/check-in")
     @Operation(summary = "Registrar ingreso del vehículo a la cochera")
+    /** Comprueba la condición indicada: check in. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<ReservationResponse>> checkIn(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
@@ -114,6 +120,7 @@ public class OperatorController {
 
     @PatchMapping("/reservations/{id}/check-out")
     @Operation(summary = "Registrar salida del vehículo de la cochera")
+    /** Comprueba la condición indicada: check out. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<ReservationResponse>> checkOut(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
@@ -122,12 +129,14 @@ public class OperatorController {
         return ResponseEntity.ok(ApiResponse.ok("Salida registrada exitosamente", response));
     }
 
+    /** Resuelve el valor o dependencia solicitada: resolve user id. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private Long resolveUserId(UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userDetails.getUsername()));
         return user.getId();
     }
 
+    /** Valida las precondiciones del flujo: validate operator access to lot. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private void validateOperatorAccessToLot(UserDetails userDetails, Long lotId) {
         Long operatorId = resolveUserId(userDetails);
         boolean isAdmin = userDetails.getAuthorities().stream()

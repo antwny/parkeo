@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.parking
 
 import androidx.compose.foundation.background
@@ -20,6 +21,7 @@ import pe.parkeo.ui.viewmodel.ParkingDetailViewModel
 import pe.parkeo.util.DirectionsButton
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parking detail screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkingDetailScreen(
     parkingId: Long,
     viewModel: ParkingDetailViewModel,

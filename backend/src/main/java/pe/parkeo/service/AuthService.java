@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Servicio de negocio Spring; coordina validaciones, persistencia y reglas del área indicada.
 package pe.parkeo.service;
 
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class AuthService {
     private final pe.parkeo.config.JwtConfig jwtConfig;
 
     @Transactional
+    /** Registra y devuelve: register. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Ya existe un usuario registrado con el email: " + request.getEmail());
@@ -73,6 +75,7 @@ public class AuthService {
     }
 
     @Transactional
+    /** Autentica las credenciales y actualiza el estado de sesión: login. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public AuthResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -90,6 +93,7 @@ public class AuthService {
     }
 
     @Transactional
+    /** Ejecuta la operación indicada por el nombre: refresh token. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public AuthResponse refreshToken(RefreshTokenRequest request) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(request.getRefreshToken())
                 .orElseThrow(() -> new UnauthorizedException("Refresh token no encontrado o inválido"));
@@ -108,6 +112,7 @@ public class AuthService {
     }
 
     @Transactional
+    /** Cierra la sesión y limpia el estado local/remoto correspondiente: logout. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public void logout(String refreshTokenValue) {
         refreshTokenRepository.findByToken(refreshTokenValue).ifPresent(token -> {
             token.setIsRevoked(true);
@@ -117,6 +122,7 @@ public class AuthService {
     }
 
     @Transactional
+    /** Cierra la sesión y limpia el estado local/remoto correspondiente: logout all. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public void logoutAll(Long userId) {
         refreshTokenRepository.revokeAllByUserId(userId);
         log.info("All sessions revoked for userId: {}", userId);
@@ -126,6 +132,7 @@ public class AuthService {
     // Internal helpers
     // ─────────────────────────────────────────────────────────────────────────────
 
+    /** Ejecuta la operación indicada por el nombre: generate auth response. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private AuthResponse generateAuthResponse(User user) {
         String primaryRole = user.getRoles().stream()
                 .map(r -> r.getName().name())
@@ -158,6 +165,7 @@ public class AuthService {
         return AuthResponse.of(accessToken, rawRefreshToken, jwtConfig.getExpiration() / 1000, userResponse);
     }
 
+    /** Transforma el dato de origen al modelo de destino: map to user response. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public UserResponse mapToUserResponse(User user) {
         List<String> roles = user.getRoles().stream()
                 .map(r -> r.getName().name())
@@ -183,6 +191,7 @@ public class AuthService {
      */
     @Scheduled(cron = "0 0 2 * * *")
     @Transactional
+    /** Ejecuta la operación indicada por el nombre: cleanup expired tokens. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public void cleanupExpiredTokens() {
         refreshTokenRepository.deleteExpiredAndRevoked(LocalDateTime.now());
         log.info("Expired/revoked refresh tokens cleaned up");

@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de interfaz reutilizable; concentra presentación y comportamiento visual común.
 package pe.parkeo.ui.components
 
 import androidx.compose.foundation.background
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import pe.parkeo.ui.theme.*
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo empty state. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoEmptyState(
     title: String,
     modifier: Modifier = Modifier,
@@ -93,6 +95,7 @@ fun ParkeoEmptyState(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo error view. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoErrorView(
     message: String,
     onRetry: () -> Unit,
@@ -153,6 +156,7 @@ fun ParkeoErrorView(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo loading view. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoLoadingView(
     modifier: Modifier = Modifier,
     message: String? = null

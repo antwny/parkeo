@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.operator
 
 import androidx.compose.foundation.background
@@ -29,6 +30,7 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+/** Ejecuta la operación indicada por el nombre: operator reservations screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun OperatorReservationsScreen(
     viewModel: OperatorViewModel,
     onNavigateBack: (() -> Unit)? = null
@@ -288,6 +290,7 @@ fun OperatorReservationsScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: operator reservation card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun OperatorReservationCard(
     reservation: ReservationDto,
     onCheckIn: () -> Unit,
@@ -475,6 +478,7 @@ private fun OperatorReservationCard(
     }
 }
 
+/** Da formato al valor para presentación: format iso. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun formatIso(iso: String?): String {
     if (iso.isNullOrBlank()) return "--:--"
     return try {

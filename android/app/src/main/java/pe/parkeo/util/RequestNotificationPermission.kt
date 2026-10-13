@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Utilidad transversal de la app para coordinar el comportamiento indicado por el nombre del archivo.
 package pe.parkeo.util
 
 import android.Manifest
@@ -12,6 +13,7 @@ import androidx.core.content.ContextCompat
 
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: request notification permission. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun RequestNotificationPermission() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
 

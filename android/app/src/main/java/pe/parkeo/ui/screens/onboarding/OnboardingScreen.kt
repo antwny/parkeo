@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.onboarding
 
 import androidx.compose.animation.animateColorAsState
@@ -42,6 +43,7 @@ data class OnboardingPage(
 )
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: onboarding screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun OnboardingScreen(
     viewModel: OnboardingViewModel,
     onFinish: () -> Unit
@@ -73,6 +75,7 @@ fun OnboardingScreen(
     val pagerState = rememberPagerState { pages.size }
     val scope = rememberCoroutineScope()
 
+    /** Ejecuta la operación indicada por el nombre: finish. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun finish() {
         viewModel.markOnboardingShown()
         onFinish()
@@ -206,6 +209,7 @@ fun OnboardingScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: onboarding page view. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun OnboardingPageView(
     page: OnboardingPage,
     extendedColors: pe.parkeo.ui.theme.ParkeoExtendedColors

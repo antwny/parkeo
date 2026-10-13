@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de seguridad; participa en autenticación, autorización o validación de identidad.
 package pe.parkeo.security;
 
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
+    /** Carga los datos requeridos: load user by username. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmailWithRoles(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
@@ -28,12 +30,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     @Transactional(readOnly = true)
+    /** Carga los datos requeridos: load user by id. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public UserDetails loadUserById(Long id) throws UsernameNotFoundException {
         User user = userRepository.findByIdWithRoles(id)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con id: " + id));
         return buildUserDetails(user);
     }
 
+    /** Construye el objeto o configuración requerida: build user details. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private UserDetails buildUserDetails(User user) {
         if (!user.getIsActive()) {
             throw new UsernameNotFoundException("La cuenta está desactivada: " + user.getEmail());

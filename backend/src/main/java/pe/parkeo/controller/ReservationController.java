@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Controlador REST; recibe solicitudes HTTP, delega al servicio y define la respuesta del endpoint.
 package pe.parkeo.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +36,7 @@ public class ReservationController {
 
     @GetMapping
     @Operation(summary = "Obtener mis reservas")
+    /** Consulta y devuelve: get my reservations. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<Page<ReservationResponse>>> getMyReservations(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) String status,
@@ -48,6 +50,7 @@ public class ReservationController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Obtener detalle de una reserva")
+    /** Consulta y devuelve: get reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<ReservationDetailResponse>> getReservation(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
@@ -58,6 +61,7 @@ public class ReservationController {
 
     @PostMapping
     @Operation(summary = "Crear una nueva reserva")
+    /** Crea y devuelve: create reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<ReservationResponse>> createReservation(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateReservationRequest request) {
@@ -71,6 +75,7 @@ public class ReservationController {
 
     @PatchMapping("/{id}/cancel")
     @Operation(summary = "Cancelar una reserva")
+    /** Valida y cancela la reserva indicada: cancel reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ResponseEntity<ApiResponse<ReservationResponse>> cancelReservation(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id,
@@ -83,6 +88,7 @@ public class ReservationController {
         return ResponseEntity.ok(ApiResponse.ok("Reserva cancelada", response));
     }
 
+    /** Resuelve el valor o dependencia solicitada: resolve user id. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private Long resolveUserId(UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", userDetails.getUsername()));

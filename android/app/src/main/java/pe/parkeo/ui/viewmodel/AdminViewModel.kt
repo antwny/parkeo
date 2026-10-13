@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. ViewModel de presentación; coordina acciones del usuario y publica estado observable para la interfaz.
 package pe.parkeo.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
@@ -27,6 +28,7 @@ class AdminViewModel(
     private val _uiState = MutableStateFlow(AdminUiState())
     val uiState: StateFlow<AdminUiState> = _uiState.asStateFlow()
 
+    /** Carga los datos requeridos: load dashboard data. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun loadDashboardData(refresh: Boolean = false) {
         viewModelScope.launch {
             if (refresh) {
@@ -72,6 +74,7 @@ class AdminViewModel(
         }
     }
 
+    /** Ejecuta la operación indicada por el nombre: toggle parking lot status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun toggleParkingLotStatus(id: Long, isOpen: Boolean?, isActive: Boolean?) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -96,6 +99,7 @@ class AdminViewModel(
         }
     }
 
+    /** Asigna el recurso al destino indicado: assign operator. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun assignOperator(parkingLotId: Long, operatorId: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -120,6 +124,7 @@ class AdminViewModel(
         }
     }
 
+    /** Ejecuta la operación indicada por el nombre: toggle user status. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun toggleUserStatus(id: Long, currentActive: Boolean) {
         viewModelScope.launch {
             val targetActive = !currentActive
@@ -145,6 +150,7 @@ class AdminViewModel(
         }
     }
 
+    /** Limpia el estado asociado: clear messages. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun clearMessages() {
         _uiState.update { it.copy(error = null, successMessage = null) }
     }

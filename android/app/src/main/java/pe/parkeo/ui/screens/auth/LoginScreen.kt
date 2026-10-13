@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.auth
 
 import androidx.compose.foundation.background
@@ -35,6 +36,7 @@ import pe.parkeo.ui.theme.ParkeoTheme
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
 @Composable
+/** Autentica las credenciales y actualiza el estado de sesión: login screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun LoginScreen(
     viewModel: AuthViewModel,
     onLoginSuccess: () -> Unit,
@@ -54,6 +56,7 @@ fun LoginScreen(
         }
     }
 
+    /** Valida las precondiciones del flujo: validate and login. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun validateAndLogin() {
         emailError = if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             "Ingresa un correo válido"
@@ -338,6 +341,7 @@ fun LoginScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: quick login chip. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun QuickLoginChip(
     modifier: Modifier = Modifier,
     role: String,

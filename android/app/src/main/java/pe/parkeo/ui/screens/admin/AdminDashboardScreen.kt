@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.admin
 
 import androidx.compose.foundation.background
@@ -23,6 +24,7 @@ import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.AdminViewModel
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: admin dashboard screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun AdminDashboardScreen(
     viewModel: AdminViewModel,
     onNavigateToParkingLots: () -> Unit = {},
@@ -275,6 +277,7 @@ fun AdminDashboardScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: modern kpi card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun ModernKpiCard(
     modifier: Modifier = Modifier,
     title: String,

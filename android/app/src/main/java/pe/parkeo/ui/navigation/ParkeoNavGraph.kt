@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Implementación del módulo Parkeo identificado por el paquete y nombre de esta clase.
 package pe.parkeo.ui.navigation
 
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ import pe.parkeo.ui.screens.vehicles.VehiclesScreen
 import pe.parkeo.ui.viewmodel.*
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo nav graph. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoNavGraph(
     viewModelFactory: ParkeoViewModelFactory,
     navController: NavHostController = rememberNavController(),

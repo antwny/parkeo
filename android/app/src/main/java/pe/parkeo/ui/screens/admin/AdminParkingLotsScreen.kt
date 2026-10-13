@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.admin
 
 import androidx.compose.foundation.clickable
@@ -22,6 +23,7 @@ import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.AdminViewModel
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: admin parking lots screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun AdminParkingLotsScreen(
     viewModel: AdminViewModel,
     onNavigateBack: (() -> Unit)? = null,
@@ -181,6 +183,7 @@ fun AdminParkingLotsScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: admin parking lot card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun AdminParkingLotCard(
     lot: ParkingLotDto,
     onToggleOpen: (Boolean) -> Unit,
@@ -404,6 +407,7 @@ private fun AdminParkingLotCard(
 }
 
 @Composable
+/** Asigna el recurso al destino indicado: assign operator dialog. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun AssignOperatorDialog(
     lot: ParkingLotDto,
     operators: List<UserDto>,

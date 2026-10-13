@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Configuración Spring; registra o parametriza componentes transversales del backend.
 package pe.parkeo.config;
 
 import io.swagger.v3.oas.models.Components;
@@ -16,6 +17,7 @@ public class OpenApiConfig {
     private static final String SECURITY_SCHEME_NAME = "bearerAuth";
 
     @Bean
+    /** Ejecuta la operación indicada por el nombre: parkeo open api. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public OpenAPI parkeoOpenAPI() {
         return new OpenAPI()
                 .info(new Info()

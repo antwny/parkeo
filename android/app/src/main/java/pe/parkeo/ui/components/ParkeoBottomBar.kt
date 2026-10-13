@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de interfaz reutilizable; concentra presentación y comportamiento visual común.
 package pe.parkeo.ui.components
 
 import androidx.compose.animation.animateColorAsState
@@ -25,6 +26,7 @@ data class ParkeoBottomNavItem(
 )
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo bottom bar. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoBottomBar(
     items: List<ParkeoBottomNavItem>,
     selectedIndex: Int,
@@ -106,6 +108,7 @@ fun ParkeoBottomBar(
     }
 }
 
+/** Ejecuta la operación indicada por el nombre: item item icon. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun itemItemIcon(icon: ImageVector, isSelected: Boolean): ImageVector {
     return icon
 }

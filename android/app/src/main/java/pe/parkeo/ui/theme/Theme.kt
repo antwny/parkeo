@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Implementación del módulo Parkeo identificado por el paquete y nombre de esta clase.
 package pe.parkeo.ui.theme
 
 import android.app.Activity
@@ -132,6 +133,7 @@ object ParkeoTheme {
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo theme. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit

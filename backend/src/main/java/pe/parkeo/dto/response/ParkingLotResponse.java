@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. DTO serializable; representa datos que cruzan el contrato HTTP entre la app y el backend.
 package pe.parkeo.dto.response;
 
 import lombok.*;
@@ -29,14 +30,17 @@ public class ParkingLotResponse {
     private String operatorName;
     private LocalDateTime createdAt;
 
+    /** Consulta y devuelve: get total capacity. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Integer getTotalCapacity() {
         return totalSpaces;
     }
 
+    /** Consulta y devuelve: get rating. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Double getRating() {
         return averageRating;
     }
 
+    /** Consulta y devuelve: get distance. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Double getDistance() {
         return distanceKm;
     }

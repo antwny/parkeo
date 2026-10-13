@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
 package pe.parkeo.ui.screens.operator
 
 import androidx.compose.foundation.background
@@ -27,6 +28,7 @@ import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.OperatorViewModel
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: operator spaces screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun OperatorSpacesScreen(
     viewModel: OperatorViewModel,
     onNavigateToReservations: (() -> Unit)? = null
@@ -270,6 +272,7 @@ fun OperatorSpacesScreen(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: status mini card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun StatusMiniCard(
     modifier: Modifier = Modifier,
     label: String,
@@ -302,6 +305,7 @@ private fun StatusMiniCard(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parking space tile. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun ParkingSpaceTile(
     space: ParkingSpaceDto,
     onClick: () -> Unit
@@ -361,6 +365,7 @@ private fun ParkingSpaceTile(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: change space status dialog. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun ChangeSpaceStatusDialog(
     space: ParkingSpaceDto,
     onDismiss: () -> Unit,
@@ -439,6 +444,7 @@ private fun ChangeSpaceStatusDialog(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: status option button. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun StatusOptionButton(
     title: String,
     subtitle: String,

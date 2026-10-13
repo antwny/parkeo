@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Utilidad transversal de la app para coordinar el comportamiento indicado por el nombre del archivo.
 package pe.parkeo.util
 
 import okhttp3.ResponseBody
@@ -8,6 +9,7 @@ object NetworkErrorParser {
      * Parses Spring Boot ApiResponse error JSON from Retrofit's errorBody.
      * Extracts either field validation messages in data or the top-level message.
      */
+    /** Interpreta el dato de entrada y devuelve su forma normalizada: parse error message. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     fun parseErrorMessage(errorBody: ResponseBody?, defaultMessage: String): String {
         if (errorBody == null) return defaultMessage
         return try {

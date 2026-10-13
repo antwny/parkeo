@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Servicio de negocio Spring; coordina validaciones, persistencia y reglas del área indicada.
 package pe.parkeo.service;
 
 import lombok.RequiredArgsConstructor;
@@ -55,6 +56,7 @@ public class ReservationService {
      * READ_COMMITTED + bloqueo de la fila del espacio = una sola reserva por espacio/horario.
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
+    /** Crea y devuelve: create reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ReservationResponse createReservation(CreateReservationRequest request, Long userId) {
         LocalDateTime start = request.getStartTime();
         LocalDateTime end = request.getEndTime();
@@ -119,6 +121,7 @@ public class ReservationService {
 
     // ─── Helpers de creación ──────────────────────────────────────────────────
 
+    /** Valida las precondiciones del flujo: validate time range. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private void validateTimeRange(LocalDateTime start, LocalDateTime end) {
         if (start == null || end == null) {
             throw new ValidationException("Debes indicar la hora de inicio y de fin");
@@ -184,6 +187,7 @@ public class ReservationService {
     // ─── Consultas ────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get my reservations. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Page<ReservationResponse> getMyReservations(Long userId, String statusParam, Pageable pageable) {
         if (statusParam == null || statusParam.isBlank()) {
             return reservationRepository.findByUserId(userId, pageable).map(this::mapToResponse);
@@ -210,6 +214,7 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get my reservations. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Page<ReservationResponse> getMyReservations(Long userId, ReservationStatus status, Pageable pageable) {
         Page<Reservation> reservations = (status != null)
                 ? reservationRepository.findByUserIdAndStatus(userId, status, pageable)
@@ -218,6 +223,7 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get reservation detail. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ReservationDetailResponse getReservationDetail(Long reservationId, Long userId, boolean isAdmin) {
         Reservation reservation;
         if (isAdmin) {
@@ -233,6 +239,7 @@ public class ReservationService {
     // ─── Cancelar ─────────────────────────────────────────────────────────────
 
     @Transactional
+    /** Valida y cancela la reserva indicada: cancel reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ReservationResponse cancelReservation(Long reservationId, Long userId, String reason) {
         Reservation reservation = reservationRepository.findByIdAndUserId(reservationId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
@@ -257,6 +264,7 @@ public class ReservationService {
     // ─── Check-In / Check-Out (Operador) ────────────────────────────────────
 
     @Transactional
+    /** Comprueba la condición indicada: check in reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ReservationResponse checkInReservation(Long reservationId, Long operatorId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
@@ -296,6 +304,7 @@ public class ReservationService {
     }
 
     @Transactional
+    /** Comprueba la condición indicada: check out reservation. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public ReservationResponse checkOutReservation(Long reservationId, Long operatorId) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
@@ -337,6 +346,7 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
+    /** Consulta y devuelve: get reservations by lot. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public Page<ReservationResponse> getReservationsByLot(Long parkingLotId, ReservationStatus status, Pageable pageable) {
         return (status != null)
                 ? reservationRepository.findByParkingLotIdAndStatus(parkingLotId, status, pageable).map(this::mapToResponse)
@@ -345,6 +355,7 @@ public class ReservationService {
 
     // ─── Mapping ──────────────────────────────────────────────────────────────
 
+    /** Transforma el dato de origen al modelo de destino: map to response. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private ReservationResponse mapToResponse(Reservation r) {
         return ReservationResponse.builder()
                 .id(r.getId())
@@ -367,6 +378,7 @@ public class ReservationService {
                 .build();
     }
 
+    /** Transforma el dato de origen al modelo de destino: map to detail response. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private ReservationDetailResponse mapToDetailResponse(Reservation r) {
         ParkingLot lot = r.getParkingLot();
         ParkingSpace space = r.getParkingSpace();
@@ -412,6 +424,7 @@ public class ReservationService {
                 .build();
     }
 
+    /** Ejecuta la operación indicada por el nombre: generate confirmation code. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private String generateConfirmationCode() {
         return "PKO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }

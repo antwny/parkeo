@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de seguridad; participa en autenticación, autorización o validación de identidad.
 package pe.parkeo.security;
 
 import io.jsonwebtoken.*;
@@ -19,6 +20,7 @@ public class JwtTokenProvider {
 
     private final JwtConfig jwtConfig;
 
+    /** Consulta y devuelve: get signing key. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private SecretKey getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(
                 java.util.Base64.getEncoder().encodeToString(
@@ -91,6 +93,7 @@ public class JwtTokenProvider {
         return parseClaims(token);
     }
 
+    /** Interpreta el dato de entrada y devuelve su forma normalizada: parse claims. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())

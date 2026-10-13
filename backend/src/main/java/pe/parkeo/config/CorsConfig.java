@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Configuración Spring; registra o parametriza componentes transversales del backend.
 package pe.parkeo.config;
 
 import org.springframework.context.annotation.Bean;
@@ -13,6 +14,7 @@ import java.util.List;
 public class CorsConfig {
 
     @Bean
+    /** Ejecuta la operación indicada por el nombre: cors configuration source. Consulte el catálogo de métodos y conceptos en la guía maestra. */
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*"));

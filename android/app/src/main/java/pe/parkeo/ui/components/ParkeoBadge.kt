@@ -1,3 +1,4 @@
+// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de interfaz reutilizable; concentra presentación y comportamiento visual común.
 package pe.parkeo.ui.components
 
 import androidx.compose.foundation.background
@@ -32,6 +33,7 @@ enum class BadgeVariant {
 typealias ParkeoBadgeStatus = BadgeVariant
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo badge. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoBadge(
     status: BadgeVariant,
     modifier: Modifier = Modifier,
@@ -58,6 +60,7 @@ fun ParkeoBadge(
 }
 
 @Composable
+/** Ejecuta la operación indicada por el nombre: parkeo badge. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoBadge(
     text: String,
     modifier: Modifier = Modifier,
