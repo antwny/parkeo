@@ -1,5 +1,25 @@
 #!/bin/sh
 
+# =============================================================================
+# PARKeo · Android
+# Archivo: gradlew
+# Tipo/capa: script de arranque del Gradle Wrapper para POSIX (Linux/macOS).
+# Propósito: localizar una JVM, ejecutar `gradle/wrapper/gradle-wrapper.jar` y
+#            delegar en la distribución de Gradle fijada en
+#            `gradle/wrapper/gradle-wrapper.properties`.
+# Conceptos clave: wrapper, `JAVA_HOME`, `JAVA_OPTS`, `GRADLE_OPTS`,
+#            `DEFAULT_JVM_OPTS`, resolución de enlaces simbólicos y diferencia
+#            entre la JVM de arranque y el daemon de Gradle.
+# Relación: es el equivalente Unix de `gradlew.bat`; ambos usan el mismo JAR y
+#            las mismas propiedades. La lógica interna está generada por Gradle,
+#            por lo que se documenta sin modificarla.
+# Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+# =============================================================================
+
+# NOTA: el resto del archivo es el script generado por Gradle. No conviene
+# editar su lógica: para actualizar el wrapper se regenera con la tarea
+# `wrapper` del propio Gradle, que reescribe este archivo y el `.bat`.
+
 #
 # Copyright © 2015 the original authors.
 #
@@ -117,6 +137,14 @@ esac
 CLASSPATH="\\\"\\\""
 
 
+# -----------------------------------------------------------------------------
+# Selección de la JVM de arranque. Si `JAVA_HOME` está definido se usa su
+# ejecutable `java`; en caso contrario se busca `java` en `PATH`. El wrapper
+# necesita una JVM para iniciar el JAR, pero la versión concreta del daemon la
+# decide `gradle/gradle-daemon-jvm.properties`. Si no hay Java disponible, el
+# script termina con un mensaje claro.
+# -----------------------------------------------------------------------------
+
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
@@ -201,6 +229,13 @@ if "$cygwin" || "$msys" ; then
 fi
 
 
+# -----------------------------------------------------------------------------
+# Opciones de la JVM de arranque del wrapper. Son deliberadamente pequeñas
+# (-Xmx64m/-Xms64m) porque esta JVM solo inicia el JAR del wrapper; la memoria
+# real del daemon de Gradle se configura en `gradle.properties` mediante
+# `org.gradle.jvmargs`. `JAVA_OPTS` y `GRADLE_OPTS` permiten añadir opciones sin
+# editar el script.
+# -----------------------------------------------------------------------------
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
@@ -210,6 +245,12 @@ DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 #   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
 #     treated as '${Hostname}' itself on the command line.
 
+# -----------------------------------------------------------------------------
+# Construcción de la línea de comandos del wrapper. Se pasa el nombre de la app
+# para diagnósticos, un classpath vacío, el JAR del wrapper y todos los
+# argumentos recibidos (`"$@"`), de modo que `./gradlew assembleDebug` llegue
+# intacto a Gradle.
+# -----------------------------------------------------------------------------
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
         -classpath "$CLASSPATH" \
@@ -248,4 +289,9 @@ eval "set -- $(
         tr '\n' ' '
     )" '"$@"'
 
+# -----------------------------------------------------------------------------
+# `eval` reconstruye las opciones de JVM respetando comillas y separadores, y
+# `exec` sustituye el proceso del shell por la JVM. Desde aquí el wrapper
+# comprueba la distribución configurada, la descarga si falta y ejecuta Gradle.
+# -----------------------------------------------------------------------------
 exec "$JAVACMD" "$@"

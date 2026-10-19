@@ -1,7 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/values-night/themes.xml
+     Tipo/capa: recurso de tema nativo para modo nocturno.
+     Propósito: ofrecer una variante de `Theme.Parkeo` cuando el sistema está en
+     modo oscuro. Android selecciona automáticamente esta carpeta por el
+     calificador `-night`, sin que el código tenga que preguntar por el tema.
+     Conceptos clave: calificador de recursos `night`, herencia de estilos por
+     nombre, resolución de recursos en tiempo de ejecución y coherencia visual.
+     Relación: comparte el mismo nombre `Theme.Parkeo` que `values/themes.xml`;
+     el manifiesto no cambia. Al usar ya una paleta oscura en el tema base, esta
+     variante mantiene exactamente los mismos valores para que no haya saltos de
+     color al alternar el modo oscuro. El splash de API 31+ se declara en
+     `values-v31/themes.xml`; como el calificador `-night` tiene prioridad sobre
+     `-v31`, en modo nocturno esta variante puede resolver primero y no incluir
+     los atributos de splash. Para cubrir ambos modos habría que crear
+     `values-night-v31/themes.xml`.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
 <resources>
+    <!-- Mismo tema padre y mismos atributos que la variante por defecto. Se
+         declara explícitamente porque el calificador `-night` sustituye por
+         completo al recurso base; si se omitiera, el sistema buscaría otra
+         coincidencia. La paleta de PARKeo es oscura por diseño, así que el modo
+         nocturno no necesita cambios de color. -->
     <style name="Theme.Parkeo" parent="android:Theme.Material.NoActionBar">
+        <!-- Fondo de ventana oscuro, también en modo nocturno, para evitar
+             destellos y mantener la continuidad con el splash. -->
         <item name="android:windowBackground">@color/parkeo_obsidian</item>
+
+        <!-- Barras del sistema integradas con el fondo obsidiana. -->
         <item name="android:statusBarColor">@color/parkeo_obsidian</item>
         <item name="android:navigationBarColor">@color/parkeo_obsidian</item>
     </style>

@@ -1,4 +1,20 @@
-// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Componente de interfaz reutilizable; concentra presentación y comportamiento visual común.
+/*
+ * PARKeo · Android
+ * Archivo: `android/app/src/main/java/pe/parkeo/ui/components/ParkeoTextField.kt`
+ * Capa: componentes reutilizables de interfaz.
+ * Propósito: ofrecer un campo de texto con la apariencia de PARKeo, etiqueta visible, placeholder,
+ *   icono inicial, mensaje de error, alternancia de contraseña y acción final personalizable,
+ *   manteniendo el valor controlado por la pantalla.
+ * Conceptos clave: composable con estado interno mínimo, estado elevado (`value`/`onValueChange`),
+ *   `BasicTextField`, `Modifier`, foco, transformación visual, `KeyboardOptions`,
+ *   `KeyboardActions`, slots y accesibilidad.
+ * Flujo de uso: la pantalla guarda el texto y pasa `value` + `onValueChange`; el campo solo
+ *   recuerda foco y visibilidad de contraseña. Si hay error, la pantalla pasa `errorMessage` y
+ *   el componente cambia borde, etiqueta y añade el mensaje.
+ * Relación con pantallas/tema: se usa en inicio de sesión, registro, filtros, reservas y perfil.
+ *   Consume `ParkeoTheme.colors` y `Dimens` para superficies, bordes, acento y alturas.
+ * Guía: `docs/GUIA_MAESTRA_ESTUDIANTE.md`.
+ */
 package pe.parkeo.ui.components
 
 import androidx.compose.foundation.background
@@ -26,8 +42,42 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pe.parkeo.ui.theme.*
 
+/**
+ * Campo de texto de PARKeo construido sobre `BasicTextField`, no sobre el `OutlinedTextField` de
+ * Material, para controlar por completo fondo, borde, etiqueta y acciones. El valor es controlado
+ * por el llamador: el componente no guarda el texto, solo estado de presentación (foco y
+ * visibilidad de contraseña).
+ *
+ * Comportamiento visual:
+ * - En reposo usa `extended.border` con `Dimens.borderThin`.
+ * - Con foco usa `extended.accent` con `Dimens.borderFocus` y tiñe el icono inicial.
+ * - Con error usa `ParkeoRed500`, prioridad sobre el foco, y muestra el mensaje debajo.
+ *
+ * La etiqueta se dibuja fuera del contenedor y el placeholder es un `Text` superpuesto cuando el
+ * valor está vacío; no son la semántica nativa de `BasicTextField`. El icono inicial es
+ * decorativo. Los botones automáticos de mostrar/ocultar contraseña y limpiar sí tienen
+ * `contentDescription` ("Mostrar", "Ocultar", "Limpiar").
+ *
+ * @param value Texto actual. Es la fuente de verdad controlada por la pantalla.
+ * @param onValueChange Callback que recibe el nuevo texto en cada edición, limpieza o pegado.
+ * @param modifier `Modifier` aplicado a la columna completa (etiqueta, campo y error).
+ * @param label Etiqueta opcional encima del campo. Cambia de color con foco/error.
+ * @param placeholder Texto de ayuda opcional que se muestra solo cuando `value` está vacío.
+ * @param leadingIcon Icono opcional al inicio; decorativo y teñido según foco.
+ * @param isPassword Activa la transformación de contraseña y el botón de ojo cuando no hay un
+ *   `trailingContent` personalizado.
+ * @param errorMessage Mensaje de error. Si no es nulo ni blanco, activa el estado de error y se
+ *   muestra debajo del campo.
+ * @param keyboardOptions Configuración del teclado (tipo, capitalización, IME action).
+ * @param keyboardActions Acciones del teclado, por ejemplo enviar o siguiente.
+ * @param singleLine Si es `true`, limita la entrada a una sola línea.
+ * @param enabled Si es `false`, el campo no recibe interacción y se muestra deshabilitado.
+ * @param readOnly Permite foco y selección pero impide modificar el texto.
+ * @param trailingIcon Slot opcional para una acción final personalizada.
+ * @param trailingContent Alias de [trailingIcon]; si se proporciona, tiene prioridad sobre el
+ *   icono de contraseña o limpieza automático.
+ */
 @Composable
-/** Ejecuta la operación indicada por el nombre: parkeo text field. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ParkeoTextField(
     value: String,
     onValueChange: (String) -> Unit,
@@ -46,20 +96,25 @@ fun ParkeoTextField(
     trailingContent: (@Composable () -> Unit)? = trailingIcon
 ) {
     val extended = ParkeoTheme.colors
+    // Estado de presentación local: foco visual y visibilidad de la contraseña. No es el valor
+    // del campo, que permanece elevado en la pantalla.
     var isFocused by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
 
     val hasError = !errorMessage.isNullOrBlank()
 
+    // El error gana al foco para que una validación fallida siga siendo visible.
     val borderColor = when {
         hasError -> ParkeoRed500
         isFocused -> extended.accent
         else -> extended.border
     }
 
+    // El borde se refuerza en foco o error; en reposo se mantiene fino.
     val borderWidth = if (isFocused || hasError) Dimens.borderFocus else Dimens.borderThin
 
     Column(modifier = modifier.fillMaxWidth()) {
+        // Etiqueta: semántica visual, alineada con el estado del campo.
         if (label != null) {
             Text(
                 text = label,
@@ -70,6 +125,7 @@ fun ParkeoTextField(
             )
         }
 
+        // Contenedor del campo: fondo, borde y padding horizontal compartidos.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -79,6 +135,7 @@ fun ParkeoTextField(
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Icono inicial decorativo; el acento indica foco.
             if (leadingIcon != null) {
                 Icon(
                     imageVector = leadingIcon,
@@ -93,6 +150,7 @@ fun ParkeoTextField(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterStart
             ) {
+                // Placeholder visual: solo aparece cuando no hay texto.
                 if (value.isEmpty() && placeholder != null) {
                     Text(
                         text = placeholder,
@@ -101,6 +159,7 @@ fun ParkeoTextField(
                     )
                 }
 
+                // Campo real. La transformación de contraseña se aplica solo si el ojo está oculto.
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
@@ -121,6 +180,8 @@ fun ParkeoTextField(
                 )
             }
 
+            // Acción final: slot personalizado con prioridad, o botón automático de contraseña,
+            // o limpieza rápida cuando hay texto y el campo tiene foco.
             val finalTrailing = trailingContent ?: trailingIcon
             if (finalTrailing != null) {
                 finalTrailing()
@@ -151,6 +212,7 @@ fun ParkeoTextField(
             }
         }
 
+        // Mensaje de error debajo del campo, con el mismo rojo semántico del borde.
         if (hasError) {
             Text(
                 text = errorMessage.orEmpty(),

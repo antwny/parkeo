@@ -1,4 +1,21 @@
-// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
+/*
+ * PARKeo · Android
+ * Archivo: RegisterScreen.kt
+ * Capa: presentación (creación de cuenta).
+ * Propósito: recoger nombres, correo, teléfono opcional y contraseña, validar requisitos
+ * mínimos y registrar al usuario mediante AuthViewModel.
+ * Conceptos clave: Composable, estado local, validación de contraseña por reglas,
+ * coincidencia de confirmación, Patterns.EMAIL_ADDRESS, ParkeoTextField, ParkeoTopBar,
+ * ParkeoButton, estados de carga/error y navegación por callbacks.
+ * Flujo: el formulario calcula en cada recomposición si es válido; al enviar llama a
+ * `viewModel.register`; AuthViewModel publica el resultado; `LaunchedEffect` observa
+ * `isSuccess` y ejecuta `onRegisterSuccess`, que el grafo traduce en navegación a home.
+ * Relación con otros archivos: ParkeoNavGraph.kt crea AuthViewModel y conecta los callbacks;
+ * AuthViewModel.kt expone AuthUiState; ParkeoTextField.kt y ParkeoButton.kt aportan los
+ * controles reutilizables; ParkeoTopBar.kt permite volver al login.
+ * Guía de estudio: docs/GUIA_MAESTRA_ESTUDIANTE.md (secciones de Compose, estado y
+ * seguridad).
+ */
 package pe.parkeo.ui.screens.auth
 
 import androidx.compose.foundation.layout.*
@@ -24,16 +41,39 @@ import pe.parkeo.ui.theme.ParkeoCardShape
 import pe.parkeo.ui.theme.ParkeoTheme
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
+/**
+ * Pantalla de creación de cuenta.
+ *
+ * Los campos viven en estado de composición; el ViewModel conserva solo el resultado de la
+ * operación. Las reglas de contraseña se calculan en cada recomposición a partir del texto
+ * actual, sin necesidad de un botón "validar": la lista de requisitos se actualiza en vivo
+ * y el botón principal solo se habilita cuando todo se cumple.
+ *
+ * La validación local es una ayuda de usabilidad, no una garantía de seguridad. El backend
+ * vuelve a validar el correo, la contraseña y la unicidad de la cuenta. La contraseña se
+ * envía sin recortar espacios; los nombres, el correo y el teléfono sí se recortan, y un
+ * teléfono vacío se convierte en `null`.
+ *
+ * Accesibilidad: todos los campos tienen etiqueta visible, el campo de confirmación anuncia
+ * su error cuando las contraseñas no coinciden y los iconos de requisitos son decorativos
+ * porque el texto de cada fila ya expresa la regla.
+ *
+ * @param viewModel ViewModel de autenticación que expone `uiState` y la acción `register`.
+ * @param onRegisterSuccess callback ejecutado cuando el registro termina con éxito; el
+ * grafo limpia la señal y navega a home.
+ * @param onNavigateBack callback de la barra superior para volver al login.
+ */
 @Composable
-/** Registra y devuelve: register screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun RegisterScreen(
     viewModel: AuthViewModel,
     onRegisterSuccess: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    // Estado asíncrono compartido con el login: carga, error y éxito.
     val uiState by viewModel.uiState.collectAsState()
     val extended = ParkeoTheme.colors
 
+    // Campos controlados del formulario. Se mantienen locales porque son efímeros.
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -41,16 +81,20 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
 
+    // Navegación reactiva al éxito: se ejecuta cuando el flujo cambia a verdadero.
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) onRegisterSuccess()
     }
 
+    // Reglas de contraseña evaluadas en vivo para la lista de requisitos.
     val hasMinLength = password.length >= 8
     val hasUpperCase = password.any { it.isUpperCase() }
     val hasLowerCase = password.any { it.isLowerCase() }
     val hasDigit = password.any { it.isDigit() }
     val isPasswordStrong = hasMinLength && hasUpperCase && hasLowerCase && hasDigit
 
+    // Si la confirmación está vacía todavía no se marca error; la igualdad final se exige
+    // de todos modos en `isValid`, junto con nombres, correo y fortaleza de contraseña.
     val passwordsMatch = confirmPassword.isBlank() || password == confirmPassword
     val isValid = firstName.isNotBlank() &&
             lastName.isNotBlank() &&
@@ -61,6 +105,7 @@ fun RegisterScreen(
     Scaffold(
         containerColor = extended.background,
         topBar = {
+            // Barra superior con flecha de regreso al login; no hay botón de acción.
             ParkeoTopBar(
                 title = "Crear cuenta",
                 onNavigationClick = onNavigateBack
@@ -75,6 +120,7 @@ fun RegisterScreen(
                 .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Introducción breve del formulario.
             Text(
                 text = "Únete a la red de movilidad Parkeo",
                 style = MaterialTheme.typography.bodyMedium,
@@ -82,6 +128,7 @@ fun RegisterScreen(
                 modifier = Modifier.padding(bottom = Dimens.spacingLg)
             )
 
+            // Nombre y apellido comparten fila; cada campo ocupa la mitad del ancho.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -107,6 +154,7 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
+            // Correo: teclado especializado. Al editar se limpia el error del backend.
             ParkeoTextField(
                 value = email,
                 onValueChange = {
@@ -122,6 +170,7 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
+            // Teléfono opcional: no participa en `isValid`; si queda vacío se envía null.
             ParkeoTextField(
                 value = phone,
                 onValueChange = { phone = it },
@@ -134,6 +183,7 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
+            // Contraseña: `isPassword` oculta el texto y ofrece el botón de visibilidad.
             ParkeoTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -147,6 +197,8 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(Dimens.spacingSm))
 
+            // Lista de requisitos: cada fila cambia de icono y color cuando se cumple.
+            // Es retroalimentación local; el backend sigue siendo la autoridad final.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -169,6 +221,8 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
+            // Confirmación: muestra error solo cuando hay texto y no coincide. También
+            // activa la transformación de contraseña y su propio botón de visibilidad.
             ParkeoTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
@@ -181,6 +235,8 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // Banner de error del backend: correo ya registrado, datos inválidos o fallo
+            // de red. Se oculta al editar el correo; los demás campos no lo limpian.
             uiState.error?.let { errorMsg ->
                 Spacer(Modifier.height(Dimens.spacingMd))
                 Surface(
@@ -215,6 +271,8 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(Dimens.spacingXl))
 
+            // Acción principal: envía los datos normalizados. Se deshabilita hasta que
+            // `isValid` sea verdadero y muestra progreso mientras el ViewModel carga.
             ParkeoButton(
                 text = "Crear cuenta",
                 onClick = {
@@ -236,6 +294,7 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
+            // Enlace de retorno al login; equivale a la flecha de la barra superior.
             TextButton(
                 onClick = onNavigateBack,
                 colors = ButtonDefaults.textButtonColors(contentColor = extended.textSecondary)
@@ -260,8 +319,17 @@ fun RegisterScreen(
     }
 }
 
+/**
+ * Fila de un requisito de contraseña con retroalimentación visual.
+ *
+ * Cuando `isMet` es verdadero se muestra un check verde; si no, un círculo vacío en color
+ * terciario. El icono es decorativo porque el texto indica la regla; el estado se percibe
+ * también por color, pero no se anuncia como control interactivo.
+ *
+ * @param label descripción legible del requisito.
+ * @param isMet indica si la contraseña actual ya cumple la regla.
+ */
 @Composable
-/** Ejecuta la operación indicada por el nombre: password requirement row. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun PasswordRequirementRow(
     label: String,
     isMet: Boolean

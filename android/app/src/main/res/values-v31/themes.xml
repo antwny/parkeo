@@ -1,9 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/values-v31/themes.xml
+     Tipo/capa: recurso de tema nativo para Android 12+ (API 31 o superior).
+     Propósito: añadir los atributos del splash screen del sistema que solo
+     existen desde API 31, manteniendo el resto del tema `Theme.Parkeo`.
+     Conceptos clave: calificador de versión `-v31`, splash screen de Android 12,
+     `windowSplashScreenBackground`, `windowSplashScreenAnimatedIcon`, máscara
+     circular del sistema y resolución de recursos por nivel de API.
+     Relación: en dispositivos API 31+ en modo diurno, esta variante reemplaza a
+     `values/themes.xml` para el mismo nombre de estilo. Usa
+     `@drawable/splash_branding` como icono y los colores de la paleta nativa.
+     Después del splash, `MainActivity` arranca Compose con `ParkeoTheme`; no se
+     usa la librería SplashScreen compat. Limitación de recursos: el calificador
+     `-night` tiene prioridad sobre `-v31`, así que en modo nocturno puede
+     resolverse `values-night/themes.xml` y perderse estos atributos; para
+     cubrirlo habría que añadir un `values-night-v31/themes.xml`.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
 <resources>
+    <!-- Se conserva el tema padre de plataforma sin ActionBar y se añaden los
+         atributos de splash. Al tener el calificador `-v31`, estos atributos no
+         llegan a versiones anteriores, donde el sistema simplemente muestra la
+         ventana con `windowBackground`. En modo nocturno, `values-night` puede
+         ganar la selección por delante de `-v31`; esta variante no sustituye a
+         la nocturna salvo que exista una carpeta `values-night-v31`. -->
     <style name="Theme.Parkeo" parent="android:Theme.Material.NoActionBar">
+        <!-- Fondo de la ventana y del splash: el mismo obsidiana de la marca,
+             para que la transición al primer frame de Compose sea invisible. -->
         <item name="android:windowBackground">@color/parkeo_obsidian</item>
+
+        <!-- Color de fondo que el sistema pinta detrás del icono de splash. -->
         <item name="android:windowSplashScreenBackground">@color/parkeo_obsidian</item>
+
+        <!-- Icono que el sistema muestra en el splash. Es un vector con el
+             monograma "P" y un punto de acento; el sistema lo escala y lo recorta
+             con su máscara (normalmente circular), por eso el diseño deja margen
+             alrededor de la marca. -->
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_branding</item>
+
+        <!-- Barras del sistema integradas con el fondo oscuro, igual que en el
+             tema base, para las versiones de Android que aún las colorean. -->
         <item name="android:statusBarColor">@color/parkeo_obsidian</item>
         <item name="android:navigationBarColor">@color/parkeo_obsidian</item>
     </style>

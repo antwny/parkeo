@@ -1,9 +1,36 @@
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/drawable/ic_launcher_foreground.xml
+     Tipo/capa: drawable vectorial (capa frontal del icono adaptativo).
+     Propósito: dibujar el motivo de PARKeo: una placa redondeada con degradado,
+     una sombra elíptica, un pin de mapa en verde lima y un círculo interior
+     oscuro. Esta capa se superpone al fondo del icono adaptativo.
+     Conceptos clave: `VectorDrawable`, viewport de 512 unidades escalado a
+     108 dp, degradados con `aapt:attr`, comandos de `pathData` (M, L, C, A, Z),
+     alfa, máscara del lanzador y tema monocromo de Android 13+.
+     Relación: se referencia desde `mipmap-anydpi-v26/ic_launcher.xml` y
+     `ic_launcher_round.xml`; el manifiesto usa ese mipmap como icono. El pin y
+     el lima conectan con la temática de estacionamientos y con la paleta de la
+     app. No se usa en el splash: allí se emplea `splash_branding.xml`.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
+<!-- El vector declara 108 x 108 dp (tamaño lógico del icono adaptativo) pero su
+     viewport es de 512 x 512 unidades. El sistema escala el dibujo al tamaño
+     necesario; usar un viewport grande permite definir curvas con más precisión.
+     `aapt` habilita el atributo de gradiente que AAPT2 convierte al compilar. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
+  <!-- Capa 1: placa cuadrada con esquinas redondeadas (radio 112). El `pathData`
+       combina segmentos rectos y arcos `A` para redondear las cuatro esquinas.
+       El relleno no es un color plano: `aapt:attr` define un degradado lineal
+       desde la esquina superior izquierda (#182210, verde muy oscuro) hasta la
+       inferior derecha (#0F172A, azul noche). Así el icono tiene profundidad sin
+       necesidad de una imagen bitmap. -->
   <path
       android:pathData="M112,0L400,0A112,112 0,0 1,512 112L512,400A112,112 0,0 1,400 512L112,512A112,112 0,0 1,0 400L0,112A112,112 0,0 1,112 0z">
     <aapt:attr name="android:fillColor">
@@ -18,11 +45,22 @@
       </gradient>
     </aapt:attr>
   </path>
+
+  <!-- Capa 2: sombra elíptica bajo el pin. Se construye con dos arcos que forman
+       una elipse de 70 x 16 unidades centrada en (256, 435). El relleno negro y
+       `fillAlpha`/`strokeAlpha` de 0.4 la hacen semitransparente, de modo que
+       sugiere que el pin está elevado sobre la placa. -->
   <path
       android:pathData="M186,435a70,16 0,1 0,140 0a70,16 0,1 0,-140 0z"
       android:strokeAlpha="0.4"
       android:fillColor="#000000"
       android:fillAlpha="0.4"/>
+
+  <!-- Capa 3: pin de mapa. Comienza en la punta superior (256,65), traza curvas
+       cúbicas `C` para formar los hombros y baja hasta la punta inferior
+       (256,435), que coincide con el centro de la sombra. El degradado lineal va
+       de un lima claro (#BEF264) a un lima más intenso (#84CC16), aportando el
+       acento de marca sobre el fondo oscuro. -->
   <path
       android:pathData="M256,65C165,65 100,138 100,222C100,325 232,418 256,435C280,418 412,325 412,222C412,138 347,65 256,65Z">
     <aapt:attr name="android:fillColor">
@@ -37,6 +75,13 @@
       </gradient>
     </aapt:attr>
   </path>
+
+  <!-- Capa 4: círculo interior del pin, de 80 unidades de radio. El comando
+       `m-80,0` mueve el punto de inicio de forma relativa antes de los arcos
+       `a80,80`, y `Z` cierra la figura. El color #0F172A coincide con el extremo
+       oscuro del fondo y deja un "hueco" que refuerza la lectura de pin/mapa.
+       En el icono adaptativo, el sistema recorta el conjunto con su máscara; el
+       motivo central se mantiene dentro de la zona segura. -->
   <path
       android:pathData="M256,215m-80,0a80,80 0,1 1,160 0a80,80 0,1 1,-160 0"
       android:fillColor="#0F172A"/>

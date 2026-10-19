@@ -1,6 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+     Tipo/capa: recurso de icono adaptativo (mipmap, API 26+).
+     Propósito: declarar las capas del icono que el lanzador compone y recorta:
+     fondo, primer plano y versión monocroma para los iconos temáticos.
+     Conceptos clave: `adaptive-icon`, calificador `anydpi-v26`, capas
+     `background`/`foreground`/`monochrome`, máscara del lanzador y zona segura.
+     Relación: el manifiesto lo referencia como `@mipmap/ic_launcher`. El fondo
+     vive en `drawable/ic_launcher_background.xml` y el motivo en
+     `drawable/ic_launcher_foreground.xml`; el sistema combina ambas capas y les
+     aplica la forma del dispositivo (círculo, cuadrado redondeado, etc.).
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
+<!-- `anydpi` indica que el recurso no depende de una densidad concreta y `v26`
+     limita su uso a Android 8.0+ (API 26), donde existen los iconos adaptativos.
+     En versiones anteriores el sistema buscaría un PNG en las carpetas
+     `mipmap-*dpi`; este proyecto asume API 26 como mínimo, por lo que el icono
+     adaptativo es suficiente. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Capa inferior: placa verde de 108 x 108 dp. El lanzador la recorta con su
+         máscara, de modo que los bordes de la retícula de la plantilla pueden no
+         ser visibles. -->
     <background android:drawable="@drawable/ic_launcher_background"/>
+
+    <!-- Capa frontal: placa degradada, sombra, pin y círculo interior. Se dibuja
+         encima del fondo y también queda sujeta a la máscara y a la zona segura
+         del icono. -->
     <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+
+    <!-- Capa monocroma usada por los iconos temáticos de Android 13+ (Material
+         You). El sistema toma la silueta alfa del drawable y la tiñe con el color
+         del tema; reutilizar el foreground es válido porque el sistema ignora
+         los colores y conserva la forma. Si se quisiera un trazo más limpio, se
+         podría crear un vector monocromo específico. -->
     <monochrome android:drawable="@drawable/ic_launcher_foreground"/>
 </adaptive-icon>

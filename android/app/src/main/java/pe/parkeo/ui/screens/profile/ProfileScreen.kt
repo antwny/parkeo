@@ -1,4 +1,22 @@
-// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
+/*
+ * PARKeo · Android
+ * Archivo: ProfileScreen.kt
+ * Capa: presentación (perfil del usuario autenticado).
+ * Propósito: mostrar identidad y rol, ofrecer accesos contextuales según ese rol y cerrar
+ * sesión con confirmación.
+ * Conceptos clave: Composable, StateFlow, collectAsState, ParkeoBadge, ParkeoCard,
+ * ParkeoTopBar, ParkeoButton destructivo, AlertDialog, estado local con remember, callbacks
+ * opcionales y logout delegado al ViewModel y al grafo.
+ * Flujo: AuthViewModel entrega `userProfile`; la pantalla calcula el rol, elige insignia e
+ * icono, muestra el banner y las secciones correspondientes. Los accesos invocan callbacks
+ * que, dentro de MainScreen, cambian de pestaña; el cierre de sesión abre un diálogo y,
+ * al confirmar, llama a `logout()` y a `onLogout`.
+ * Relación con otros archivos: ParkeoNavGraph.kt conecta la variante de perfil como destino
+ * independiente; MainScreen.kt lo usa como pestaña y pasa subconjuntos de callbacks;
+ * AuthViewModel.kt expone el perfil y la acción de logout; ParkeoBadge y ParkeoCard
+ * aportan la presentación.
+ * Guía de estudio: docs/GUIA_MAESTRA_ESTUDIANTE.md (secciones de Compose, estado y roles).
+ */
 package pe.parkeo.ui.screens.profile
 
 import androidx.compose.foundation.background
@@ -24,8 +42,32 @@ import pe.parkeo.ui.components.*
 import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
+/**
+ * Pantalla de perfil reutilizable por los tres roles.
+ *
+ * El perfil se observa desde `AuthViewModel`, que lo obtiene de la sesión persistida. Si
+ * todavía no llegó, se usan textos de reserva ("Usuario Parkeo" y correo vacío) en lugar de
+ * bloquear la pantalla; la insignia se calcula con el rol disponible. La pantalla no hace
+ * llamadas de red propias: los datos y el logout pertenecen al ViewModel.
+ *
+ * Muchos callbacks tienen valor por defecto `{}` porque la pantalla se usa en dos contextos:
+ * como pestaña de `MainScreen`, donde cambian el índice de pestaña, y como destino
+ * independiente del grafo, donde los callbacks conectados navegan a rutas reales. Los
+ * accesos informativos que aún no tienen flujo asociado usan `onClick = {}` y se documentan
+ * como tal.
+ *
+ * @param viewModel ViewModel de autenticación con el perfil y la acción `logout`.
+ * @param onNavigateBack vuelve a la pantalla o pestaña anterior.
+ * @param onNavigateToVehicles abre la gestión de vehículos del cliente.
+ * @param onNavigateToReservations abre las reservas del cliente u operador.
+ * @param onNavigateToExplore abre la exploración de cocheras.
+ * @param onNavigateToSpaces abre la matriz de espacios del operador.
+ * @param onNavigateToDashboard abre el panel de métricas del administrador.
+ * @param onNavigateToParkingLots abre la gestión de cocheras del administrador.
+ * @param onNavigateToUsers abre la gestión de usuarios del administrador.
+ * @param onLogout cierra la sesión y navega fuera del área autenticada.
+ */
 @Composable
-/** Ejecuta la operación indicada por el nombre: profile screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun ProfileScreen(
     viewModel: AuthViewModel,
     onNavigateBack: () -> Unit,
@@ -38,20 +80,26 @@ fun ProfileScreen(
     onNavigateToUsers: () -> Unit = {},
     onLogout: () -> Unit
 ) {
+    // Perfil observable; puede ser null durante la primera lectura de la sesión.
     val userProfile by viewModel.userProfile.collectAsState()
     val extended = ParkeoTheme.colors
+
+    // Estado local del diálogo de confirmación de cierre de sesión.
     var showLogoutDialog by remember { mutableStateOf(false) }
 
+    // Normalización y clasificación del rol para elegir insignia, avatar y secciones.
     val roleUpper = (userProfile?.role ?: "").uppercase()
     val isAdmin = roleUpper.contains("ADMIN")
     val isOperator = roleUpper.contains("OPERAT")
 
+    // Insignia visual del rol. ParkeoBadge muestra el texto y los colores semánticos.
     val roleBadgeStatus = when {
         isAdmin -> ParkeoBadgeStatus.Admin
         isOperator -> ParkeoBadgeStatus.Operator
         else -> ParkeoBadgeStatus.Client
     }
 
+    // Icono del avatar coherente con el rol.
     val avatarIcon = when {
         isAdmin -> Icons.Filled.AdminPanelSettings
         isOperator -> Icons.Filled.Badge
@@ -62,6 +110,7 @@ fun ProfileScreen(
         containerColor = extended.background,
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
+            // Barra superior con título y flecha de regreso.
             ParkeoTopBar(
                 title = "Mi perfil",
                 onNavigationClick = onNavigateBack
@@ -76,7 +125,8 @@ fun ProfileScreen(
                 .padding(Dimens.spacingMd),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
-            // Identity Hero Card
+            // Identidad: avatar, nombre, correo e insignia. Los campos se leen del perfil
+            // persistido; si aún no hay nombre se usa un texto de reserva.
             ParkeoCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.padding(Dimens.spacingLg),
@@ -121,7 +171,8 @@ fun ProfileScreen(
                 }
             }
 
-            // Banner contextual por rol
+            // Banner contextual: explica responsabilidades del rol. El cliente no tiene
+            // banner porque su experiencia se describe en las secciones de cuenta.
             when {
                 isAdmin -> {
                     ParkeoCard(
@@ -191,7 +242,8 @@ fun ProfileScreen(
                 }
             }
 
-            // Secciones operativas específicas por Rol
+            // Secciones operativas por rol: cada bloque agrupa acciones relacionadas y
+            // usa los callbacks recibidos para cambiar de pestaña o navegar.
             when {
                 isAdmin -> {
                     // SECCIÓN ADMIN: GESTIÓN ADMINISTRATIVA
@@ -245,6 +297,7 @@ fun ProfileScreen(
                             modifier = Modifier.padding(start = 4.dp, top = 8.dp)
                         )
 
+                        // Elemento informativo: no navega en esta versión (onClick vacío).
                         ProfileOptionTile(
                             icon = Icons.Filled.Dns,
                             title = "Arquitectura del Sistema",
@@ -252,6 +305,7 @@ fun ProfileScreen(
                             onClick = {}
                         )
 
+                        // Elemento informativo: no abre una pantalla de auditoría.
                         ProfileOptionTile(
                             icon = Icons.Filled.Security,
                             title = "Auditoría y Políticas de Seguridad",
@@ -313,6 +367,8 @@ fun ProfileScreen(
                             onClick = onNavigateToSpaces
                         )
 
+                        // Elemento informativo: no navega; solo comunica el estado de la
+                        // sesión operativa.
                         ProfileOptionTile(
                             icon = Icons.Filled.Security,
                             title = "Seguridad de Acceso",
@@ -367,6 +423,8 @@ fun ProfileScreen(
                             modifier = Modifier.padding(start = 4.dp, top = 8.dp)
                         )
 
+                        // Elemento informativo: la configuración de recordatorios aún no
+                        // tiene pantalla propia; onClick vacío.
                         ProfileOptionTile(
                             icon = Icons.Filled.NotificationsActive,
                             title = "Recordatorios de reserva",
@@ -374,6 +432,7 @@ fun ProfileScreen(
                             onClick = {}
                         )
 
+                        // Elemento informativo: no abre un detalle de privacidad.
                         ProfileOptionTile(
                             icon = Icons.Filled.Security,
                             title = "Seguridad y privacidad",
@@ -381,6 +440,7 @@ fun ProfileScreen(
                             onClick = {}
                         )
 
+                        // Elemento informativo acerca de la versión; sin destino asociado.
                         ProfileOptionTile(
                             icon = Icons.Filled.Info,
                             title = "Acerca de Parkeo v1.0",
@@ -393,7 +453,8 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Logout Button
+            // Acción destructiva: no cierra la sesión directamente; abre el diálogo para
+            // evitar un logout accidental. El estilo rojo comunica irreversibilidad.
             ParkeoButton(
                 text = "Cerrar sesión",
                 onClick = { showLogoutDialog = true },
@@ -407,6 +468,10 @@ fun ProfileScreen(
             Spacer(Modifier.height(Dimens.spacingLg))
         }
 
+        // Confirmación de cierre de sesión. "Cancelar" y el toque fuera cierran el diálogo;
+        // "Cerrar sesión" dispara la limpieza en el ViewModel y la navegación del grafo.
+        // `logout()` es asíncrono, pero `onLogout` se ejecuta de inmediato para no dejar al
+        // usuario en una pantalla autenticada mientras termina la limpieza.
         if (showLogoutDialog) {
             AlertDialog(
                 onDismissRequest = { showLogoutDialog = false },
@@ -443,8 +508,19 @@ fun ProfileScreen(
     }
 }
 
+/**
+ * Tarjeta de acceso del perfil.
+ *
+ * Muestra un icono, un título, un subtítulo opcional y un chevron. Toda la tarjeta es
+ * clicable a través de `ParkeoCard(onClick = ...)`. El chevron es decorativo y no se anuncia
+ * por separado; el texto del título actúa como etiqueta accesible del control.
+ *
+ * @param icon icono representativo de la sección o acción.
+ * @param title título visible del acceso.
+ * @param subtitle explicación breve; si es nulo o está en blanco, no se muestra.
+ * @param onClick acción que se ejecuta al pulsar la tarjeta.
+ */
 @Composable
-/** Ejecuta la operación indicada por el nombre: profile option tile. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun ProfileOptionTile(
     icon: ImageVector,
     title: String,

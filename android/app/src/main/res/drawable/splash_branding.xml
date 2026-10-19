@@ -1,15 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/drawable/splash_branding.xml
+     Tipo/capa: drawable vectorial (marca para el splash screen del sistema).
+     Propósito: dibujar el monograma "P" de PARKeo y un punto de acento en lima,
+     usado como icono del splash en Android 12+.
+     Conceptos clave: `VectorDrawable`, viewport de 120 unidades, tamaño
+     intrínseco de 288 dp, máscara circular del splash, `pathData` con curvas
+     cúbicas y arcos, relleno lima y zona segura.
+     Relación: `values-v31/themes.xml` lo asigna a
+     `android:windowSplashScreenAnimatedIcon`. El sistema lo muestra mientras
+     arranca `MainActivity`; después Compose toma el control con `ParkeoTheme`.
+     El color #CCFF00 coincide con el lima de `colors.xml`.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
+<!-- Vector de 288 x 288 dp con viewport de 120 unidades. El splash de Android
+     12 usa un icono de 288 dp (con una zona visible menor); definir el vector en
+     un viewport más pequeño simplifica las coordenadas y el sistema lo escala.
+     El sistema aplica una máscara circular, por eso la marca se concentra en el
+     centro y deja margen alrededor. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="288dp"
     android:height="288dp"
     android:viewportWidth="120"
     android:viewportHeight="120">
 
+    <!-- Monograma "P" estilizado. El primer subcamino dibuja el contorno
+         exterior: barra vertical izquierda, curva superior derecha, regreso a la
+         altura del travesaño y cierre inferior. El segundo subcamino (M50,42...)
+         recorta el hueco interior de la letra mediante una orientación opuesta;
+         así la "P" no queda como una mancha maciza. El relleno lima #CCFF00
+         aporta el acento de marca sobre el fondo obsidiana del splash. -->
     <!-- Stylized Parkeo 'P' Monogram -->
     <path
         android:fillColor="#CCFF00"
         android:pathData="M38,30 L66,30 C76,30 84,37 84,47 C84,57 76,64 66,64 L50,64 L50,90 L38,90 Z M50,42 L50,52 L64,52 C69,52 72,49 72,47 C72,45 69,42 64,42 Z" />
 
+    <!-- Punto de acento junto a la base de la "P". Se compone de dos arcos `A`
+         de radio 6 que forman un círculo pequeño. Es el detalle de firma de la
+         marca y equilibra visualmente el peso del monograma dentro de la máscara
+         circular del splash. -->
     <!-- Signature Accent Dot -->
     <path
         android:fillColor="#CCFF00"

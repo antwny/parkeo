@@ -1,6 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+     Tipo/capa: recurso de icono adaptativo redondo (mipmap, API 26+).
+     Propósito: declarar la variante redonda del icono adaptativo. Los
+     lanzadores que solicitan el icono circular usan este recurso, que comparte
+     las mismas capas que `ic_launcher.xml`.
+     Conceptos clave: `adaptive-icon`, variante `round`, capas de fondo,
+     primer plano y monocromo, máscara del lanzador y resolución por densidad.
+     Relación: el manifiesto declara `android:roundIcon="@mipmap/ic_launcher"`
+     (no este archivo), pero se mantiene la variante redonda por convención y
+     por si algún lanzador o herramienta la solicita. Las capas son las mismas
+     que en `ic_launcher.xml`.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
+<!-- Mismo contenido que el icono cuadrado porque el sistema aplica su propia
+     máscara: en un lanzador con iconos redondos, el resultado ya es circular.
+     Tener ambos recursos permite que herramientas que piden explícitamente la
+     variante `round` encuentren un recurso válido sin duplicar los vectores. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fondo común: placa verde de la plantilla. -->
     <background android:drawable="@drawable/ic_launcher_background"/>
+
+    <!-- Primer plano común: pin de mapa con degradado lima sobre placa oscura. -->
     <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+
+    <!-- Silueta para iconos temáticos de Android 13+: el sistema usa el canal
+         alfa y aplica el tinte del tema. -->
     <monochrome android:drawable="@drawable/ic_launcher_foreground"/>
 </adaptive-icon>

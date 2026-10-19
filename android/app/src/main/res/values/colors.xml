@@ -1,6 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/values/colors.xml
+     Tipo/capa: recurso de valores (paleta de color nativa).
+     Propósito: centralizar los colores que usan los recursos XML del sistema
+     (tema de ventana, barras del sistema y splash), de forma que puedan
+     referenciarse con `@color/...` en lugar de repetir literales hexadecimales.
+     Conceptos clave: recursos `color`, formato `#RRGGBB`, resolución de recursos
+     por nombre y separación entre la paleta nativa y la paleta Compose.
+     Relación: `themes.xml` y `values-v31/themes.xml` usan `parkeo_obsidian` para
+     el fondo y las barras; `splash_branding.xml` y el icono usan el lima de la
+     marca. La UI Compose define sus propios tokens en
+     `pe.parkeo.ui.theme.Color.kt`, por lo que estos valores son la capa nativa,
+     no la fuente única de color de las pantallas.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
 <resources>
+    <!-- Fondo principal casi negro con un matiz azulado. Se usa como
+         `windowBackground`, color de la barra de estado y de navegación, y como
+         fondo del splash. Al ser el color de arranque, evita el destello blanco
+         antes de que Compose dibuje la primera pantalla. -->
     <color name="parkeo_obsidian">#0D1117</color>
+
+    <!-- Verde lima eléctrico de la marca. Se conserva como acento de la paleta
+         nativa; el monograma del splash y los trazos del icono usan un lima
+         equivalente. En Compose el acento principal se declara aparte
+         (`ParkeoLime`), por lo que este recurso sirve para recursos XML. -->
     <color name="parkeo_lime">#CCFF00</color>
+
+    <!-- Superficie elevada de la paleta oscura. Aporta un tono ligeramente más
+         claro que `parkeo_obsidian` para tarjetas, paneles o fondos secundarios
+         en recursos nativos; la UI Compose tiene sus propias superficies. -->
     <color name="parkeo_surface">#161B22</color>
 </resources>

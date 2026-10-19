@@ -1,4 +1,20 @@
-// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
+/*
+ * PARKeo · Android
+ * Archivo: OnboardingScreen.kt
+ * Capa: presentación (introducción al producto antes de autenticarse).
+ * Propósito: explicar las ventajas de PARKeo en tres páginas, permitir avanzar, omitir o
+ * comenzar, y persistir que la introducción ya fue vista.
+ * Conceptos clave: HorizontalPager, PagerState, rememberPagerState, coroutineScope,
+ * estado local, animaciones de indicadores, ParkeoButton, persistencia mediante ViewModel
+ * y callback de finalización.
+ * Flujo: ParkeoNavGraph abre esta pantalla si splash no encontró sesión; al pulsar
+ * "Omitir" o "Comenzar" se llama a `markOnboardingShown()` y luego a `onFinish`, que navega
+ * a login eliminando onboarding del back stack.
+ * Relación con otros archivos: OnboardingViewModel.kt guarda el indicador en
+ * SessionDataStore; ParkeoNavGraph.kt conecta `onFinish`; los componentes ParkeoButton y el
+ * tema aportan la presentación.
+ * Guía de estudio: docs/GUIA_MAESTRA_ESTUDIANTE.md (secciones de Compose y flujos).
+ */
 package pe.parkeo.ui.screens.onboarding
 
 import androidx.compose.animation.animateColorAsState
@@ -35,6 +51,18 @@ import pe.parkeo.ui.theme.ParkeoPillShape
 import pe.parkeo.ui.theme.ParkeoTheme
 import pe.parkeo.ui.viewmodel.OnboardingViewModel
 
+/**
+ * Modelo de una página del onboarding.
+ *
+ * Es un `data class` inmutable: la lista de páginas se crea una vez y la UI solo lee sus
+ * campos. No contiene lógica ni estado; sirve para que el contenido editorial y su icono
+ * viajen juntos.
+ *
+ * @param icon icono vectorial que representa el beneficio de la página.
+ * @param badge etiqueta corta en mayúsculas que clasifica el beneficio.
+ * @param title titular principal de la página.
+ * @param description texto explicativo que acompaña al titular.
+ */
 data class OnboardingPage(
     val icon: ImageVector,
     val badge: String,
@@ -42,13 +70,30 @@ data class OnboardingPage(
     val description: String
 )
 
+/**
+ * Pantalla de introducción con tres páginas deslizables.
+ *
+ * El `HorizontalPager` permite cambiar de página con gesto o con el botón inferior. La
+ * lista se envuelve en `remember` porque su contenido es constante; el estado del pager se
+ * crea con `rememberPagerState` y el número total de páginas se calcula con una lambda.
+ * La corrutina del `rememberCoroutineScope` se usa para animar el desplazamiento cuando se
+ * pulsa "Siguiente".
+ *
+ * Al terminar u omitir se llama a `finish()`: primero se pide al ViewModel que persista el
+ * indicador y después se ejecuta `onFinish`. La escritura en DataStore es asíncrona y no se
+ * espera aquí; la navegación continúa de inmediato.
+ *
+ * @param viewModel ViewModel que persiste que el onboarding fue visto.
+ * @param onFinish callback que el grafo traduce a la navegación hacia login.
+ */
 @Composable
-/** Ejecuta la operación indicada por el nombre: onboarding screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun OnboardingScreen(
     viewModel: OnboardingViewModel,
     onFinish: () -> Unit
 ) {
     val extended = ParkeoTheme.colors
+
+    // Catálogo editorial fijo: cada página asocia un icono, una etiqueta y un mensaje.
     val pages = remember {
         listOf(
             OnboardingPage(
@@ -72,15 +117,26 @@ fun OnboardingScreen(
         )
     }
 
+    // Estado del pager: página actual, desplazamiento y conteo total.
     val pagerState = rememberPagerState { pages.size }
+
+    // Scope ligado a la composición para lanzar la animación de cambio de página.
     val scope = rememberCoroutineScope()
 
-    /** Ejecuta la operación indicada por el nombre: finish. Consulte el catálogo de métodos y conceptos en la guía maestra. */
+    /**
+     * Cierra la introducción y navega al siguiente destino.
+     *
+     * `markOnboardingShown()` actualiza DataStore dentro de `viewModelScope`; no es una
+     * función suspendida desde el punto de vista de la UI, por eso la pantalla puede llamar
+     * a `onFinish` justo después. Si la app se cerrara en ese instante, la escritura podría
+     * quedar pendiente; es un compromiso habitual para no bloquear la navegación.
+     */
     fun finish() {
         viewModel.markOnboardingShown()
         onFinish()
     }
 
+    // La última página cambia el texto del CTA y oculta el botón "Omitir".
     val isLastPage = pagerState.currentPage == pages.size - 1
 
     Scaffold(
@@ -94,7 +150,8 @@ fun OnboardingScreen(
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header: Brand & Skip Button
+            // Cabecera: marca a la izquierda y acción "Omitir" a la derecha (salvo en la
+            // última página, donde se reserva el espacio para mantener el equilibrio).
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -102,7 +159,7 @@ fun OnboardingScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Minimal Brand Wordmark
+                // Wordmark reducido de la marca con el punto de acento.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "Parkeo",
@@ -137,7 +194,8 @@ fun OnboardingScreen(
                 }
             }
 
-            // Pager Content
+            // Contenido deslizable: cada página ocupa el espacio restante entre la
+            // cabecera y los indicadores. El gesto y el botón comparten el mismo estado.
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -150,7 +208,8 @@ fun OnboardingScreen(
                 )
             }
 
-            // Sleek Line/Bar Step Indicators
+            // Indicadores de paso: barras que cambian de ancho y color según la página
+            // seleccionada. No son interactivas; solo comunican progreso.
             Row(
                 modifier = Modifier
                     .padding(vertical = Dimens.spacingMd),
@@ -180,7 +239,8 @@ fun OnboardingScreen(
                 }
             }
 
-            // Bottom CTA
+            // Acción principal inferior: "Siguiente" avanza una página y "Comenzar"
+            // finaliza. En la última página también se puede llegar aquí deslizando.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -208,8 +268,18 @@ fun OnboardingScreen(
     }
 }
 
+/**
+ * Renderiza una página individual del onboarding.
+ *
+ * Es una función privada de presentación: recibe el modelo y los colores extendidos para
+ * evitar leer el tema global en cada detalle. El icono se coloca dentro de un halo radial
+ * y una superficie circular; debajo aparecen la etiqueta, el titular y la descripción.
+ *
+ * @param page contenido de la página que se va a mostrar.
+ * @param extendedColors paleta extendida de PARKeo (acento, superficies, textos y bordes)
+ * obtenida por la pantalla contenedora.
+ */
 @Composable
-/** Ejecuta la operación indicada por el nombre: onboarding page view. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 private fun OnboardingPageView(
     page: OnboardingPage,
     extendedColors: pe.parkeo.ui.theme.ParkeoExtendedColors
@@ -221,7 +291,9 @@ private fun OnboardingPageView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Icon Vessel with subtle radial halo & obsidian surface
+        // Contenedor del icono: halo radial tenue sobre una superficie circular con borde.
+        // El icono es decorativo (contentDescription = null) porque el texto ya explica
+        // el beneficio; anunciarlo duplicaría la información al lector de pantalla.
         Box(
             modifier = Modifier
                 .size(130.dp)
@@ -259,7 +331,7 @@ private fun OnboardingPageView(
 
         Spacer(Modifier.height(Dimens.spacingXl))
 
-        // Technical Badge
+        // Etiqueta técnica que clasifica el beneficio (red, monitoreo, reserva).
         Surface(
             color = extendedColors.surface2,
             shape = RoundedCornerShape(4.dp),
@@ -280,7 +352,7 @@ private fun OnboardingPageView(
 
         Spacer(Modifier.height(Dimens.spacingMd))
 
-        // Headline
+        // Titular principal, centrado y con interlineado ajustado.
         Text(
             text = page.title,
             style = MaterialTheme.typography.headlineMedium,
@@ -293,7 +365,7 @@ private fun OnboardingPageView(
 
         Spacer(Modifier.height(Dimens.spacingSm))
 
-        // Subtitle
+        // Descripción de apoyo: explica el beneficio en lenguaje del usuario.
         Text(
             text = page.description,
             style = MaterialTheme.typography.bodyMedium,

@@ -1,4 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/values/strings.xml
+     Tipo/capa: recurso de valores (cadenas de texto en el idioma base).
+     Propósito: concentrar los textos visibles y los nombres de la aplicación
+     para que Android los resuelva por identificador (`@string/...`) y pueda
+     traducirlos a otros idiomas sin modificar código ni manifiestos.
+     Conceptos clave: recurso `string`, idioma por defecto, traducción mediante
+     carpetas `values-<idioma>`, identificadores generados en `R` y uso desde
+     XML (`android:label`) o desde Kotlin (`stringResource`/`getString`).
+     Relación: el manifiesto usa `app_name` como etiqueta del lanzador y de la
+     app; si se añaden idiomas, se crean archivos equivalentes en
+     `values-en/strings.xml`, etc., con los mismos nombres de recurso.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
 <resources>
+    <!-- Nombre comercial que el sistema muestra bajo el icono y en los ajustes.
+         Es el identificador base para traducir el nombre si algún día se
+         publica en otros idiomas. No debe confundirse con `applicationId`
+         (`pe.parkeo`), que es técnico e invisible para el usuario. -->
     <string name="app_name">Parkeo</string>
 </resources>

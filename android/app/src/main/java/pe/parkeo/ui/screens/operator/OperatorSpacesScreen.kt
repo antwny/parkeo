@@ -1,4 +1,90 @@
-// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
+/*
+ * PARKeo · Android
+ * Archivo: `android/app/src/main/java/pe/parkeo/ui/screens/operator/OperatorSpacesScreen.kt`
+ * Capa: presentación (Jetpack Compose). Rol: OPERADOR.
+ *
+ * Propósito
+ * ---------
+ * Esta pantalla muestra el mapa operativo de espacios del estacionamiento
+ * asignado al operador. Permite consultar la ocupación, filtrar por estado y
+ * cambiar manualmente el estado de una plaza. Al igual que la pantalla de
+ * reservas, no accede a la red ni a la base de datos: observa el `StateFlow`
+ * de `OperatorViewModel` y delega cada mutación en sus métodos.
+ *
+ * Conceptos clave
+ * ---------------
+ * - Rol OPERADOR: cuenta de trabajo encargada de la operación diaria de una
+ *   sede. No administra la plataforma completa ni las cuentas de clientes.
+ * - Estacionamiento asignado: el backend debe limitar la consulta a las sedes
+ *   vinculadas al operador mediante `operator_parking_assignments`. La sede
+ *   elegida (`selectedLot`) determina qué espacios se muestran.
+ * - Estados de espacio:
+ *   - `AVAILABLE`: libre; se pinta con `signalGreen` y la etiqueta "Libre".
+ *   - `OCCUPIED`: un vehículo está físicamente en la plaza; `signalRed`,
+ *     "Ocupado".
+ *   - `RESERVED`: plaza apartada para una reserva; `signalAmber`, "Reserva".
+ *   - `MAINTENANCE`: bloqueada por reparaciones o limpieza; gris
+ *     (`textTertiary`), "Mtto.".
+ *   Cualquier valor desconocido cae en la rama gris y usa el badge `Closed`.
+ * - Ocupación: no es un campo separado. Se deriva de los estados de los
+ *   espacios. Los contadores de la cabecera resumen cuántos están disponibles,
+ *   ocupados y reservados; el mantenimiento se puede filtrar, pero no tiene
+ *   tarjeta de resumen propia.
+ * - Jetpack Compose: la cuadrícula y los contadores se recomponen cuando cambia
+ *   `uiState.spaces`; no se manipulan vistas imperativamente.
+ * - StateFlow: `OperatorViewModel.uiState` publica el estado de presentación y
+ *   la pantalla lo recoge con `collectAsState()`.
+ * - `LazyVerticalGrid`: cuadrícula perezosa con columnas adaptativas de mínimo
+ *   100 dp; en pantallas angostas produce dos columnas y en tablets más.
+ * - Diálogo: el cambio de estado se elige en un `AlertDialog`. Cada opción
+ *   ejecuta la mutación de inmediato; el diálogo no tiene botón de guardar.
+ * - Snackbar: informa el resultado de la actualización o el error devuelto por
+ *   el ViewModel/repositorio.
+ *
+ * Flujo de usuario y datos
+ * ------------------------
+ * 1. Al entrar, `LaunchedEffect(Unit)` llama a `loadMyParkingLots()`. El
+ *    ViewModel obtiene las sedes asignadas, conserva la selección previa si
+ *    sigue existiendo (o elige la primera) y carga sus espacios y reservas.
+ * 2. Si hay más de una sede, aparece un selector horizontal. Al tocar una sede
+ *    se actualiza `selectedLot` y se recargan los espacios.
+ * 3. La cabecera resume disponibles, ocupados y reservados. Los chips permiten
+ *    filtrar por todos, libres, ocupados, reservados o mantenimiento. El
+ *    filtrado es local; no genera una petición nueva.
+ * 4. La cuadrícula muestra cada espacio con su número, un icono según el tipo
+ *    de vehículo (moto, camión o auto) y un badge de estado.
+ * 5. Al tocar una tarjeta se abre el diálogo de cambio de estado. Al elegir
+ *    una opción se invoca `updateSpaceStatus(spaceId, newStatus)`, se cierra el
+ *    diálogo y el ViewModel reemplaza el espacio devuelto por el backend.
+ * 6. Si la actualización falla, el Snackbar muestra el error y el estado local
+ *    no se modifica. Si tiene éxito, se muestra un mensaje y los contadores se
+ *    recalculan automáticamente.
+ *
+ * Relación con ViewModel, navegación, backend y seguridad
+ * -------------------------------------------------------
+ * - `OperatorViewModel` es la fuente de verdad para sedes y espacios; la
+ *   pantalla solo conserva estado efímero (sede ya seleccionada en el VM,
+ *   filtro activo y espacio cuyo diálogo está abierto).
+ * - El parámetro `onNavigateToReservations` está declarado para conectar esta
+ *   vista con la pantalla de reservas, pero la implementación actual no lo
+ *   invoca. Es un punto de integración pendiente, no un botón existente.
+ * - El icono de refresco llama a `loadMyParkingLots(refresh = true)` y vuelve a
+ *   consultar la asignación y los espacios. No hay actualización en tiempo real
+ *   por WebSocket; la frescura depende de refrescar o volver a entrar.
+ * - El backend debe validar que el operador autenticado tenga asignada la sede,
+ *   que el espacio pertenezca a esa sede y que el cambio de estado sea legal.
+ *   Ocultar opciones o filtrar tarjetas en Compose no protege el endpoint: un
+ *   cliente modificado puede enviar la petición directamente. Sin esa
+ *   validación, un operador podría alterar espacios de otra sede o marcar como
+ *   libre una plaza ocupada. La autorización horizontal y las transiciones
+ *   coherentes con reservas y check-in/check-out corresponden al servidor.
+ * - Marcar manualmente `OCCUPIED` o `RESERVED` no crea ni asocia una reserva:
+ *   solo cambia la condición operativa del espacio. La relación con clientes y
+ *   horarios se gestiona en el flujo de reservas, y el backend debe evitar
+ *   inconsistencias entre ambos conceptos.
+ *
+ * Guía de estudio: `docs/GUIA_MAESTRA_ESTUDIANTE.md`.
+ */
 package pe.parkeo.ui.screens.operator
 
 import androidx.compose.foundation.background
@@ -28,22 +114,49 @@ import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.OperatorViewModel
 
 @Composable
-/** Ejecuta la operación indicada por el nombre: operator spaces screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
+/**
+ * Pantalla de control de espacios del estacionamiento asignado al operador.
+ *
+ * Presenta un resumen de ocupación, filtros por estado y una cuadrícula de
+ * plazas. Al tocar una plaza se abre un diálogo para cambiarla de estado. Toda
+ * lectura y escritura pasa por `OperatorViewModel`; la pantalla no conoce
+ * Retrofit ni el contrato HTTP.
+ *
+ * @param viewModel ViewModel de operador que expone `uiState`, carga las sedes
+ *   asignadas y espacios, y ejecuta `updateSpaceStatus`.
+ * @param onNavigateToReservations Callback opcional previsto para navegar a la
+ *   pantalla de reservas. Actualmente la implementación no lo invoca; se
+ *   conserva como punto de integración de navegación.
+ */
 fun OperatorSpacesScreen(
     viewModel: OperatorViewModel,
     onNavigateToReservations: (() -> Unit)? = null
 ) {
+    // Estado de presentación observado desde el ViewModel. Cada emisión
+    // actualiza sedes, espacios, indicadores de carga y mensajes.
     val uiState by viewModel.uiState.collectAsState()
+    // Paleta extendida del tema PARKeo para estados y superficies.
     val extended = ParkeoTheme.colors
+    // Cola de Snackbars para éxito y error.
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Carga inicial de sedes asignadas. El ViewModel elige la sede seleccionada
+    // (conserva la anterior si sigue disponible) y luego solicita sus espacios.
+    // `Unit` como clave garantiza una sola ejecución por entrada a composición.
     LaunchedEffect(Unit) {
         viewModel.loadMyParkingLots()
     }
 
+    // Espacio cuyo diálogo de cambio de estado está abierto. `null` significa
+    // que no hay diálogo visible.
     var spaceToEdit by remember { mutableStateOf<ParkingSpaceDto?>(null) }
+    // Filtro local de la cuadrícula: "TODOS" o uno de los estados del espacio.
     var selectedFilterStatus by remember { mutableStateOf("TODOS") }
 
+    // Filtrado en memoria por estado y por texto. La pantalla no muestra un
+    // campo de búsqueda propio, pero respeta `uiState.searchQuery` si otra
+    // parte del flujo lo establece; además compara número de espacio y tipo de
+    // vehículo. No se vuelve a consultar el backend al filtrar.
     val filteredSpaces = remember(uiState.spaces, selectedFilterStatus, uiState.searchQuery) {
         uiState.spaces.filter { space ->
             val matchesFilter = when (selectedFilterStatus) {
@@ -61,6 +174,8 @@ fun OperatorSpacesScreen(
         }
     }
 
+    // Traduce mensajes del ViewModel a Snackbar y limpia el estado después de
+    // mostrarlos para evitar repeticiones durante la recomposición.
     LaunchedEffect(uiState.successMessage, uiState.error) {
         uiState.successMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -72,15 +187,22 @@ fun OperatorSpacesScreen(
         }
     }
 
+    // Contenedor principal de Material 3. El Snackbar se aloja aquí para
+    // sobrevivir a los cambios de la lista y de los filtros.
     Scaffold(
         containerColor = extended.background,
         contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
+            // Encabezado: título, nombre de la sede activa y refresco manual.
             ParkeoTopBar(
                 title = "Control de Espacios",
                 subtitle = uiState.selectedLot?.name,
                 actions = {
+                    // Refresco completo: vuelve a pedir las sedes asignadas y,
+                    // con ellas, los espacios de la sede seleccionada. Sirve
+                    // para reflejar cambios hechos por check-in/check-out u
+                    // otros operadores; no hay sondeo automático.
                     IconButton(onClick = { viewModel.loadMyParkingLots(refresh = true) }) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
@@ -92,12 +214,15 @@ fun OperatorSpacesScreen(
             )
         }
     ) { padding ->
+        // Cuerpo vertical: selector de sede, resumen, filtros y cuadrícula.
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Lot selector if multiple
+            // Selector de sede: se muestra solo cuando el operador tiene más de
+            // una cochera asignada. Cada chip cambia `selectedLot` y dispara la
+            // carga de espacios correspondiente.
             if (uiState.parkingLots.size > 1) {
                 LazyRow(
                     modifier = Modifier
@@ -142,11 +267,15 @@ fun OperatorSpacesScreen(
                 }
             }
 
-            // Quick summary banner
+            // Resumen rápido de ocupación. Los conteos se derivan de la lista
+            // completa de espacios, no de `filteredSpaces`, para que los chips
+            // de filtro no alteren las cifras globales de la sede.
             val available = uiState.spaces.count { it.status == "AVAILABLE" }
             val occupied = uiState.spaces.count { it.status == "OCCUPIED" }
             val reserved = uiState.spaces.count { it.status == "RESERVED" }
 
+            // Tres tarjetas: disponibles, ocupados y reservados. El estado
+            // `MAINTENANCE` no se resume aquí, pero sí puede filtrarse abajo.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,7 +302,9 @@ fun OperatorSpacesScreen(
                 )
             }
 
-            // Status filter chips
+            // Filtros por estado: "TODOS", libres, ocupados, reservados y
+            // mantenimiento. Son estado local de UI y no modifican el backend;
+            // solo determinan qué subconjunto se pinta en la cuadrícula.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -208,8 +339,12 @@ fun OperatorSpacesScreen(
                 }
             }
 
+            // Estados de contenido: carga inicial, resultado vacío o datos.
+            // Un error de red se comunica por Snackbar; no reemplaza la lista.
             when {
                 uiState.isLoading && uiState.spaces.isEmpty() -> {
+                    // Solo se bloquea la vista si aún no hay espacios. Durante
+                    // un refresco con datos, la cuadrícula permanece visible.
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -221,6 +356,8 @@ fun OperatorSpacesScreen(
                 }
 
                 filteredSpaces.isEmpty() -> {
+                    // Vacío por filtro o porque la sede no tiene espacios. El
+                    // mensaje no distingue ambos casos en esta versión.
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -236,6 +373,10 @@ fun OperatorSpacesScreen(
                 }
 
                 else -> {
+                    // Cuadrícula perezosa: columnas adaptativas según el ancho
+                    // disponible (mínimo 100 dp por celda) y contenido visible
+                    // únicamente. La clave por `id` conserva posiciones y
+                    // evita recrear celdas cuando cambia el estado de una plaza.
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 100.dp),
                         modifier = Modifier
@@ -247,6 +388,8 @@ fun OperatorSpacesScreen(
                         contentPadding = PaddingValues(vertical = 10.dp)
                     ) {
                         items(filteredSpaces, key = { it.id }) { space ->
+                            // Al tocar, no se muta nada: solo se abre el
+                            // diálogo con el espacio seleccionado.
                             ParkingSpaceTile(
                                 space = space,
                                 onClick = { spaceToEdit = space }
@@ -258,7 +401,10 @@ fun OperatorSpacesScreen(
         }
     }
 
-    // Modal to change space status
+    // Diálogo de cambio de estado. La mutación se envía al ViewModel al elegir
+    // una opción y el diálogo se cierra de inmediato: no hay botón "Guardar"
+    // adicional. Si el backend rechaza el cambio, el error llega por Snackbar
+    // y el estado del espacio no se modifica en la lista.
     spaceToEdit?.let { space ->
         ChangeSpaceStatusDialog(
             space = space,
@@ -272,7 +418,18 @@ fun OperatorSpacesScreen(
 }
 
 @Composable
-/** Ejecuta la operación indicada por el nombre: status mini card. Consulte el catálogo de métodos y conceptos en la guía maestra. */
+/**
+ * Tarjeta compacta de resumen para un estado de espacio.
+ *
+ * Muestra un número grande y una etiqueta breve. Es puramente presentacional:
+ * recibe los valores ya calculados por la pantalla y un color de acento.
+ *
+ * @param modifier Modificador externo; la pantalla lo usa con `weight(1f)`
+ *   para repartir el ancho de la fila.
+ * @param label Texto corto bajo el número, por ejemplo "Disponibles".
+ * @param count Cantidad de espacios en ese estado.
+ * @param color Color de señal asociado al estado (verde, rojo o ámbar).
+ */
 private fun StatusMiniCard(
     modifier: Modifier = Modifier,
     label: String,
@@ -280,6 +437,7 @@ private fun StatusMiniCard(
     color: Color
 ) {
     val extended = ParkeoTheme.colors
+    // Tarjeta del sistema visual compartido; interior centrado.
     ParkeoCard(modifier = modifier) {
         Column(
             modifier = Modifier
@@ -305,12 +463,25 @@ private fun StatusMiniCard(
 }
 
 @Composable
-/** Ejecuta la operación indicada por el nombre: parking space tile. Consulte el catálogo de métodos y conceptos en la guía maestra. */
+/**
+ * Celda de la cuadrícula que representa un espacio de estacionamiento.
+ *
+ * Muestra el número de plaza, un icono según el tipo de vehículo admitido y un
+ * badge con el estado. La celda es clicable para abrir el diálogo de cambio de
+ * estado; no muta datos por sí sola.
+ *
+ * @param space DTO del espacio. `spaceNumber` y `vehicleType` vienen del
+ *   contrato remoto y pueden estar vacíos si el backend no los envía.
+ * @param onClick Callback que solicita abrir el diálogo de cambio de estado.
+ */
 private fun ParkingSpaceTile(
     space: ParkingSpaceDto,
     onClick: () -> Unit
 ) {
     val extended = ParkeoTheme.colors
+    // Leyenda visual del estado: color de acento y variante del badge
+    // compartido. `MAINTENANCE` y valores desconocidos comparten la rama gris
+    // con el badge `Closed`.
     val (statusColor, badgeStatus) = when (space.status) {
         "AVAILABLE" -> Pair(extended.signalGreen, ParkeoBadgeStatus.Available)
         "OCCUPIED" -> Pair(extended.signalRed, ParkeoBadgeStatus.Occupied)
@@ -318,6 +489,8 @@ private fun ParkingSpaceTile(
         else -> Pair(extended.textTertiary, ParkeoBadgeStatus.Closed)
     }
 
+    // Tarjeta clicable. El borde de acento solo se aplica a espacios libres,
+    // para que las plazas utilizables resalten a simple vista.
     ParkeoCard(
         onClick = onClick,
         modifier = Modifier
@@ -332,6 +505,7 @@ private fun ParkingSpaceTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Número o código visible de la plaza.
             Text(
                 text = space.spaceNumber,
                 style = Typography.MonospaceTechnical,
@@ -340,6 +514,10 @@ private fun ParkingSpaceTile(
                 color = extended.textPrimary
             )
 
+            // Icono del tipo de vehículo. La comparación por subcadena y sin
+            // distinguir mayúsculas tolera variantes del catálogo del backend
+            // ("MOTO", "Motos", "CAMION", etc.). Un tipo ausente o extraño se
+            // representa como auto.
             Icon(
                 imageVector = when {
                     space.vehicleType.contains("MOTO", ignoreCase = true) -> Icons.Filled.TwoWheeler
@@ -351,6 +529,7 @@ private fun ParkingSpaceTile(
                 modifier = Modifier.size(24.dp)
             )
 
+            // Badge de estado con etiqueta corta en español.
             ParkeoBadge(
                 status = badgeStatus,
                 labelOverride = when (space.status) {
@@ -365,7 +544,21 @@ private fun ParkingSpaceTile(
 }
 
 @Composable
-/** Ejecuta la operación indicada por el nombre: change space status dialog. Consulte el catálogo de métodos y conceptos en la guía maestra. */
+/**
+ * Diálogo para elegir el nuevo estado de un espacio.
+ *
+ * Lista las cuatro opciones posibles con su color, descripción y un indicador
+ * de selección cuando coinciden con el estado actual. Cada opción es una acción
+ * inmediata: al pulsarla se invoca `onStatusSelected`, la pantalla envía la
+ * mutación al ViewModel y cierra el diálogo. No existe botón de confirmación
+ * aparte; el botón visible solo cancela.
+ *
+ * @param space Espacio cuyo estado se va a cambiar. Se usa para el título y
+ *   para marcar visualmente la opción vigente.
+ * @param onDismiss Callback para cerrar el diálogo sin cambiar nada.
+ * @param onStatusSelected Callback con el nuevo estado elegido como cadena del
+ *   contrato (`"AVAILABLE"`, `"OCCUPIED"`, `"RESERVED"` o `"MAINTENANCE"`).
+ */
 private fun ChangeSpaceStatusDialog(
     space: ParkingSpaceDto,
     onDismiss: () -> Unit,
@@ -373,10 +566,12 @@ private fun ChangeSpaceStatusDialog(
 ) {
     val extended = ParkeoTheme.colors
 
+    // Diálogo Material 3 con superficie propia del tema extendido.
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = extended.surface1,
         title = {
+            // Título con el número de plaza en tipografía monoespaciada.
             Text(
                 text = "Espacio ${space.spaceNumber}",
                 style = Typography.MonospaceTechnical,
@@ -397,6 +592,10 @@ private fun ChangeSpaceStatusDialog(
                 )
                 Spacer(Modifier.height(4.dp))
 
+                // Opciones de estado. `isSelected` solo resalta el estado
+                // actual; sigue siendo posible pulsarlo, pero normalmente no
+                // produce un cambio visible. La validación de transiciones
+                // permitidas corresponde al backend.
                 StatusOptionButton(
                     title = "Disponible (Libre)",
                     subtitle = "Listo para estacionar o reservar",
@@ -406,6 +605,7 @@ private fun ChangeSpaceStatusDialog(
                     onClick = { onStatusSelected("AVAILABLE") }
                 )
 
+                // Marca operativa de vehículo estacionado; no crea una reserva.
                 StatusOptionButton(
                     title = "Ocupado",
                     subtitle = "Vehículo físicamente estacionado",
@@ -415,6 +615,8 @@ private fun ChangeSpaceStatusDialog(
                     onClick = { onStatusSelected("OCCUPIED") }
                 )
 
+                // Apartado manual para un cliente; el vínculo con la reserva se
+                // gestiona en el backend, no en esta pantalla.
                 StatusOptionButton(
                     title = "Reservado",
                     subtitle = "Separado para un cliente",
@@ -424,6 +626,8 @@ private fun ChangeSpaceStatusDialog(
                     onClick = { onStatusSelected("RESERVED") }
                 )
 
+                // Bloqueo por reparación o limpieza; evita nuevas reservas o
+                // ingresos sobre esa plaza.
                 StatusOptionButton(
                     title = "Mantenimiento",
                     subtitle = "Bloqueado por reparaciones",
@@ -444,7 +648,20 @@ private fun ChangeSpaceStatusDialog(
 }
 
 @Composable
-/** Ejecuta la operación indicada por el nombre: status option button. Consulte el catálogo de métodos y conceptos en la guía maestra. */
+/**
+ * Opción seleccionable del diálogo de cambio de estado.
+ *
+ * Representa un estado con su color, icono, título y descripción. Cuando es el
+ * estado vigente, se resalta el fondo, el borde, el texto y aparece una marca
+ * de verificación.
+ *
+ * @param title Nombre visible del estado, por ejemplo "Disponible (Libre)".
+ * @param subtitle Explicación breve de cuándo corresponde ese estado.
+ * @param color Color de señal asociado al estado.
+ * @param icon Icono representativo del estado.
+ * @param isSelected `true` si coincide con el estado actual del espacio.
+ * @param onClick Callback que notifica la elección de esta opción.
+ */
 private fun StatusOptionButton(
     title: String,
     subtitle: String,
@@ -454,6 +671,7 @@ private fun StatusOptionButton(
     onClick: () -> Unit
 ) {
     val extended = ParkeoTheme.colors
+    // Superficie clicable que cambia de color cuando está seleccionada.
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -471,7 +689,9 @@ private fun StatusOptionButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Icono del estado a la izquierda del texto.
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+            // Título y explicación; ocupan el espacio central de la fila.
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,

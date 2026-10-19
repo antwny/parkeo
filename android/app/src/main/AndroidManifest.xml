@@ -1,12 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/AndroidManifest.xml
+     Tipo/capa: manifiesto de la aplicación (contrato con el sistema Android).
+     Propósito: declarar permisos, la clase `Application`, iconos, tema,
+     políticas de red, metadatos de Google Maps, la Activity de entrada y el
+     receptor de recordatorios. El sistema lee este archivo al instalar y al
+     iniciar la app; AGP lo fusiona con los manifiestos de las librerías.
+     Conceptos clave: permisos normales y peligrosos, `exported`, intent-filter
+     LAUNCHER, `allowBackup`, `usesCleartextTraffic`, `networkSecurityConfig`,
+     `manifestPlaceholders` y componentes de segundo plano.
+     Relación: `MainActivity` arranca Compose (`ParkeoApp`), `ParkeoApplication`
+     crea el `AppContainer` de DI manual y `ReminderReceiver` queda declarado como
+     receptor alternativo de alarmas; el flujo activo de recordatorios es
+     WorkManager -> `ReservationReminderWorker`. La clave `MAPS_API_KEY` llega
+     desde `local.properties` a través de `app/build.gradle.kts`. Todo el flujo
+     se explica en la guía.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- =====================================================================
+         Permisos.
+         - INTERNET: permiso normal imprescindible para que Retrofit/OkHttp
+           alcancen el backend Spring Boot.
+         - ACCESS_NETWORK_STATE: permite consultar si hay red y su tipo; no
+           concede acceso a Internet por sí solo.
+         - ACCESS_FINE_LOCATION y ACCESS_COARSE_LOCATION: ubicación precisa y
+           aproximada para centrar el mapa y buscar estacionamientos cercanos.
+           Son permisos peligrosos: se solicitan en tiempo de ejecución y el
+           usuario puede conceder solo la aproximada.
+         - POST_NOTIFICATIONS: desde Android 13 (API 33) es un permiso de
+           ejecución necesario para mostrar los recordatorios de reserva. En
+           versiones anteriores se ignora. `ReminderReceiver` comprueba que esté
+           concedido antes de publicar la notificación.
+         No se declara ubicación en segundo plano ni servicios en primer plano:
+         la app solo usa la ubicación mientras está visible.
+         ===================================================================== -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- =====================================================================
+         Elemento `application`.
+         - `android:name=".ParkeoApplication"`: clase que extiende `Application`
+           y crea el contenedor de dependencias manual (`DefaultAppContainer`).
+         - `allowBackup="true"`: permite que Auto Backup guarde datos de la app
+           (incluidas preferencias) en la nube. Si la sesión o los datos locales
+           son sensibles, conviene revisar esta política antes de producción.
+         - `icon` y `roundIcon`: iconos adaptativos del lanzador. Ambos apuntan
+           al mismo recurso; el sistema aplica la máscara correspondiente.
+         - `label`: nombre visible tomado de `strings.xml`, lo que permite
+           traducirlo sin tocar el manifiesto.
+         - `supportsRtl="true"`: habilita reflejo de layouts en idiomas RTL; la
+           UI Compose puede adaptarse, aunque la app esté en español.
+         - `theme`: tema nativo `Theme.Parkeo`; Compose aplica después su propio
+           `ParkeoTheme`. El tema nativo evita destellos blancos al arrancar.
+         - `usesCleartextTraffic="true"`: permite HTTP sin TLS. Es una postura
+           de desarrollo para hablar con el backend local; en producción debe
+           restringirse y usarse HTTPS. En Android 7+ la configuración de red
+           granular tiene prioridad sobre este indicador.
+         - `networkSecurityConfig`: define con precisión qué dominios aceptan
+           tráfico claro y qué certificados se confían (ver el XML enlazado).
+         ===================================================================== -->
     <application
         android:name=".ParkeoApplication"
         android:allowBackup="true"
@@ -18,11 +77,31 @@
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config">
 
+        <!-- =================================================================
+             Clave de Google Maps.
+             El valor `${MAPS_API_KEY}` es un placeholder de manifiesto: Gradle
+             lo sustituye con el valor leído de `local.properties`. Si falta, se
+             inyecta una cadena vacía y el mapa no se autentica. La clave no se
+             versiona para evitar filtrarla; en producción conviene restringirla
+             por paquete y por huella SHA-1 en Google Cloud.
+             ================================================================= -->
         <!-- Google Maps API Key from local.properties -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
 
+        <!-- =================================================================
+             Activity principal.
+             - `exported="true"`: obligatorio para la Activity que responde al
+               intent LAUNCHER; permite que el lanzador del sistema la abra.
+             - `theme`: repite el tema para asegurar que la ventana de esta
+               Activity use `Theme.Parkeo` al crearse.
+             - `windowSoftInputMode="adjustResize"`: redimensiona la ventana
+               cuando aparece el teclado, de modo que los campos y botones de
+               Compose no queden ocultos.
+             - El `intent-filter` con MAIN/LAUNCHER la convierte en el punto de
+               entrada que el usuario toca desde el cajón de aplicaciones.
+             ================================================================= -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -34,6 +113,17 @@
             </intent-filter>
         </activity>
 
+        <!-- =================================================================
+             Receptor de recordatorios de reserva.
+             `ReminderReceiver` recibe un `Intent` explícito (por ejemplo, desde
+             una alarma de `AlarmManager` con un `PendingIntent`) y muestra la
+             notificación. En esta app el flujo activo es WorkManager ->
+             `ReservationReminderWorker`; este receptor se conserva como
+             alternativa. Se declara `exported="false"` porque solo la propia
+             app debe poder enviarle broadcasts; así se evita que otras
+             aplicaciones lo invoquen. No tiene `intent-filter` porque no se
+             expone a intents implícitos.
+             ================================================================= -->
         <!-- Recordatorios de reserva -->
         <receiver
             android:name="pe.parkeo.util.ReminderReceiver"

@@ -1,57 +1,150 @@
+# =============================================================================
+# PARKeo · Android
+# Archivo: gradle/libs.versions.toml
+# Tipo/capa: catálogo de versiones y dependencias de Gradle (Version Catalog).
+# Propósito: centralizar versiones, coordenadas de librerías y plugins para que
+#            `build.gradle.kts` use alias seguros y no repita números de versión.
+#            Es la única fuente de verdad de las dependencias del proyecto.
+# Conceptos clave: `[versions]` define versiones reutilizables; `[libraries]`
+#            declara coordenadas `group:name:version`; `[plugins]` declara plugins
+#            con su id y versión; los alias generan accesores como
+#            `libs.androidx.core.ktx`; una BOM (Bill of Materials) fija las
+#            versiones de un conjunto de artefactos y se importa con `platform`.
+# Relación: el build raíz usa `libs.plugins.*` para registrar plugins y el módulo
+#            `:app` usa `libs.*` para sus dependencias. Las versiones elegidas
+#            condicionan Compose, navegación, DataStore, Retrofit y Maps, es
+#            decir, toda la arquitectura descrita en la guía.
+# Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+# =============================================================================
+
 [versions]
+# WorkManager: programación de trabajo diferido y recordatorios de reservas.
 work = "2.9.1"
+# Android Gradle Plugin (AGP): compila, empaqueta y genera variantes del módulo.
+# La serie 9.x integra soporte Kotlin y requiere una versión reciente de Gradle.
 agp = "9.4.0"
+# Versión de Kotlin usada por el compilador y por los plugins de Compose y
+# serialización. Debe ser compatible con la versión de AGP.
 kotlin = "2.2.10"
+# AndroidX Core KTX: extensiones Kotlin y compatibilidad de APIs del sistema.
 coreKtx = "1.10.1"
+# AndroidX Lifecycle: ciclo de vida, `StateFlow` y ViewModels observados por Compose.
 lifecycle = "2.8.7"
+# Activity Compose: `ComponentActivity`, `setContent` y `enableEdgeToEdge`.
 activityCompose = "1.8.0"
+# BOM de Compose: alinea automáticamente las versiones de UI, Material 3,
+# tooling y artefactos de test; por eso las librerías Compose no llevan versión.
 composeBom = "2026.02.01"
+# Navigation Compose: `NavHost`, rutas y navegación entre pantallas.
 navigationCompose = "2.8.4"
+# Retrofit: cliente HTTP declarativo para consumir la API Spring Boot.
 retrofit = "2.11.0"
+# OkHttp: motor HTTP subyacente y logging de peticiones/respuestas.
 okhttp = "4.12.0"
+# kotlinx.serialization JSON: serialización/deserialización de DTOs sin reflexión.
 kotlinxSerializationJson = "1.7.3"
+# Conversor de Retrofit para kotlinx.serialization, mantenido por Jake Wharton.
 retrofitKotlinxSerializationConverter = "1.0.0"
+# DataStore Preferences: almacenamiento persistente de la sesión y preferencias.
 datastore = "1.1.1"
+# Google Play Services Maps: SDK nativo del mapa.
 playServicesMaps = "19.0.0"
+# Maps Compose: integración de Google Maps con composables.
 mapsCompose = "4.4.2"
+# Google Play Services Location: ubicación del usuario (FusedLocationProvider).
 playServicesLocation = "21.3.0"
+# kotlinx.coroutines para Android: dispatchers, `viewModelScope` y concurrencia.
 coroutines = "1.9.0"
+# Coil Compose: carga asíncrona de imágenes en componentes Compose.
 coil = "2.7.0"
+# JUnit 4: pruebas unitarias locales en la JVM.
 junit = "4.13.2"
+# AndroidX JUnit: extensiones para pruebas instrumentadas en dispositivo/emulador.
 junitVersion = "1.1.5"
+# Espresso: interacción y aserciones en pruebas instrumentadas de UI.
 espressoCore = "3.5.1"
 
 [libraries]
-androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
-androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
-androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
-androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
-androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
-androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
-androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
-androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
-androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
-androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
-retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
-retrofit-kotlinx-serialization-converter = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version.ref = "retrofitKotlinxSerializationConverter" }
-okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
-kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
-google-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
-maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
-google-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
-kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+# -----------------------------------------------------------------------------
+# Núcleo, ciclo de vida y actividad.
+# Son las bases sobre las que se apoyan Compose y los ViewModels: `core-ktx`
+# aporta utilidades Kotlin, `lifecycle-runtime-ktx` integra corrutinas y
+# `lifecycle-viewmodel-compose` permite obtener ViewModels dentro de composables.
+# -----------------------------------------------------------------------------
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" } # Extensiones Kotlin para APIs de Android.
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" } # Ciclo de vida con corrutinas.
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" } # ViewModels en Compose (`viewModel()`).
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" } # `setContent` y edge-to-edge en la Activity.
+
+# -----------------------------------------------------------------------------
+# Compose (UI declarativa de toda la app).
+# Las versiones de estas librerías las gobierna la BOM: no se fijan aquí para
+# evitar combinaciones incompatibles entre `ui`, `material3` y `tooling`.
+# -----------------------------------------------------------------------------
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" } # BOM que alinea el stack Compose.
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" } # Núcleo de Compose: `@Composable`, layout y modificación.
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" } # Color, dibujo, formas y gráficos.
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" } # Inspección de previews; solo en debug.
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" } # Anotación `@Preview` para el IDE.
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" } # Componentes Material 3 usados por la UI.
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" } # Catálogo ampliado de iconos Material.
+
+# -----------------------------------------------------------------------------
+# Navegación y persistencia local.
+# `navigation-compose` conecta pantallas dentro del `NavHost`; DataStore guarda
+# la sesión sin bloquear el hilo principal y sin una base de datos completa.
+# -----------------------------------------------------------------------------
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" } # Grafo de navegación en Compose.
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" } # Preferencias persistentes de sesión.
+
+# -----------------------------------------------------------------------------
+# Red: Retrofit, OkHttp y serialización.
+# Retrofit convierte interfaces anotadas en llamadas HTTP; OkHttp ejecuta las
+# peticiones y añade logging; kotlinx.serialization transforma el JSON del
+# backend Spring Boot en DTOs sin depender de Gson.
+# -----------------------------------------------------------------------------
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" } # Cliente HTTP declarativo.
+retrofit-kotlinx-serialization-converter = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version.ref = "retrofitKotlinxSerializationConverter" } # Puente Retrofit <-> kotlinx.serialization.
+okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" } # Log de tráfico HTTP, útil en debug.
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" } # Serialización JSON de DTOs.
+
+# -----------------------------------------------------------------------------
+# Mapas y ubicación.
+# El mapa se muestra con `maps-compose`; `play-services-maps` aporta el SDK
+# nativo y `play-services-location` obtiene la posición del usuario para centrar
+# la búsqueda de estacionamientos cercanos.
+# -----------------------------------------------------------------------------
+google-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" } # SDK de Google Maps.
+maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" } # Composable `GoogleMap`.
+google-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" } # Ubicación del dispositivo.
+
+# -----------------------------------------------------------------------------
+# Concurrencia e imágenes.
+# Las corrutinas sostienen las llamadas de red y los `StateFlow`; Coil carga
+# imágenes remotas. WorkManager se declara al final del archivo, junto a las
+# dependencias de pruebas, para conservar el orden original del catálogo.
+# -----------------------------------------------------------------------------
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" } # Dispatchers y corrutinas en Android.
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" } # Carga de imágenes en Compose.
+
+# -----------------------------------------------------------------------------
+# Pruebas.
+# JUnit 4 se ejecuta en la JVM local; AndroidX JUnit y Espresso se ejecutan en
+# dispositivo/emulador. Los artefactos de test de Compose usan la misma BOM.
+# -----------------------------------------------------------------------------
+junit = { group = "junit", name = "junit", version.ref = "junit" } # Pruebas unitarias locales.
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" } # Runner/base para pruebas instrumentadas.
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" } # Interacción con UI instrumentada.
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" } # Activity auxiliar para tests de Compose.
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" } # Reglas y finders para tests de Compose.
+# WorkManager: trabajo diferido y recordatorios de reservas que sobreviven al cierre
+# de la app. Se mantiene al final para conservar el orden original del catálogo.
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" } # WorkManager con extensiones Kotlin.
 
 [plugins]
-android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+# Plugins referenciados desde los build.gradle.kts mediante `libs.plugins.*`.
+# El alias `android-application` se convierte en `libs.plugins.android.application`;
+# los guiones separan segmentos y no cambian el id real del plugin.
+android-application = { id = "com.android.application", version.ref = "agp" } # AGP para un módulo de aplicación Android.
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" } # Compilador de Compose para Kotlin 2.x.
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" } # Generación de serializadores `@Serializable`.

@@ -1,7 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/values/themes.xml
+     Tipo/capa: recurso de tema nativo (valores por defecto).
+     Propósito: definir `Theme.Parkeo`, el tema que el sistema aplica a la
+     ventana de `MainActivity` antes de que Compose dibuje su propia jerarquía.
+     Conceptos clave: tema padre, `NoActionBar`, `windowBackground`, colores de
+     barras del sistema, recursos por calificador (`values-night`, `values-v31`)
+     y transición hacia el tema Compose.
+     Relación: el manifiesto asigna `@style/Theme.Parkeo` a la aplicación y a
+     `MainActivity`. `MainActivity` activa edge-to-edge y envuelve la UI en
+     `ParkeoTheme` (Compose). Este tema solo controla la ventana nativa, no los
+     colores internos de los composables.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
 <resources>
+    <!-- `android:Theme.Material.NoActionBar` es un tema de plataforma sin barra
+         de acciones: toda la interfaz la dibuja Compose. No se usa AppCompat ni
+         Material Components, por lo que no hace falta un tema `Theme.Material3.*`
+         nativo. Al no haber ActionBar, la ventana ocupa toda la pantalla y
+         `enableEdgeToEdge()` puede extender el contenido bajo las barras. -->
     <style name="Theme.Parkeo" parent="android:Theme.Material.NoActionBar">
+        <!-- Color de fondo de la ventana antes del primer frame de Compose.
+             Mantenerlo oscuro evita el destello blanco durante el arranque. -->
         <item name="android:windowBackground">@color/parkeo_obsidian</item>
+
+        <!-- Las barras de estado y navegación usan el mismo obsidiana para que
+             la transición entre el sistema y la app sea continua. En Android 15
+             las barras son transparentes por edge-to-edge, pero el atributo
+             sigue sirviendo en versiones anteriores y como intención visual. -->
         <item name="android:statusBarColor">@color/parkeo_obsidian</item>
         <item name="android:navigationBarColor">@color/parkeo_obsidian</item>
     </style>

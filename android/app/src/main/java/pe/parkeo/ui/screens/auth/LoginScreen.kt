@@ -1,13 +1,30 @@
-// Guía maestra para el estudiante: [[docs/GUIA_MAESTRA_ESTUDIANTE.md]]. Pantalla Compose del flujo indicado por su paquete; presenta estado y delega las acciones a callbacks/ViewModel.
+/*
+ * PARKeo · Android
+ * Archivo: LoginScreen.kt
+ * Capa: presentación (autenticación).
+ * Propósito: recoger correo y contraseña, validar el formato localmente, mostrar carga y
+ * errores del backend, iniciar sesión mediante AuthViewModel y ofrecer el registro.
+ * Conceptos clave: Composable, estado local con remember/mutableStateOf, StateFlow,
+ * collectAsState, validación con Patterns.EMAIL_ADDRESS, KeyboardOptions/KeyboardActions,
+ * FocusManager, campo de contraseña con visibilidad, ParkeoTextField, ParkeoButton y
+ * navegación por callbacks.
+ * Flujo: el usuario escribe credenciales; "Iniciar sesión" valida y llama a
+ * `viewModel.login`; AuthViewModel llama al repositorio y publica `isLoading`, `error` o
+ * `isSuccess`; un `LaunchedEffect` observa el éxito y ejecuta `onLoginSuccess`, que el grafo
+ * traduce en navegación a home.
+ * Relación con otros archivos: ParkeoNavGraph.kt crea AuthViewModel y conecta los
+ * callbacks; AuthViewModel.kt expone AuthUiState; ParkeoTextField.kt implementa el campo y
+ * el ojo de visibilidad; ParkeoButton.kt muestra el progreso de carga.
+ * Guía de estudio: docs/GUIA_MAESTRA_ESTUDIANTE.md (secciones de Compose, estado y
+ * seguridad).
+ */
 package pe.parkeo.ui.screens.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -17,7 +34,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -35,28 +51,63 @@ import pe.parkeo.ui.theme.ParkeoCardShape
 import pe.parkeo.ui.theme.ParkeoTheme
 import pe.parkeo.ui.viewmodel.AuthViewModel
 
+/**
+ * Pantalla de inicio de sesión.
+ *
+ * Mantiene en estado de composición los textos escritos y el error local del correo. Los
+ * datos del formulario no se guardan en el ViewModel porque son efímeros; el ViewModel sí
+ * conserva el resultado asíncrono (`isLoading`, `error`, `isSuccess`) y la sesión. Por eso,
+ * si la Activity se recrea, los campos vuelven a vaciarse, pero la operación en curso y el
+ * resultado siguen en el ViewModel.
+ *
+ * La validación local comprueba el formato del correo antes de llamar al backend. La
+ * contraseña no se valida por longitud aquí: el servidor es la autoridad final y devuelve
+ * un error legible que se muestra en el banner. Ocultar o mostrar la contraseña lo resuelve
+ * `ParkeoTextField` internamente con `isPassword = true`; su icono de ojo tiene descripción
+ * accesible ("Mostrar"/"Ocultar"). Cada campo conserva una etiqueta visible, de modo que el
+ * lector de pantalla no depende del placeholder.
+ *
+ * @param viewModel ViewModel de autenticación; expone `uiState` y las acciones `login` y
+ * `clearError`.
+ * @param onLoginSuccess callback que se ejecuta cuando el ViewModel publica éxito. El grafo
+ * limpia la señal y navega a home.
+ * @param onNavigateToRegister callback para abrir el formulario de registro sin crear un
+ * ViewModel nuevo de forma manual.
+ */
 @Composable
-/** Autentica las credenciales y actualiza el estado de sesión: login screen. Consulte el catálogo de métodos y conceptos en la guía maestra. */
 fun LoginScreen(
     viewModel: AuthViewModel,
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit
 ) {
+    // Estado asíncrono del ViewModel: carga, error del backend y éxito.
     val uiState by viewModel.uiState.collectAsState()
     val extended = ParkeoTheme.colors
+
+    // Permite mover el foco del correo a la contraseña y cerrar el teclado.
     val focusManager = LocalFocusManager.current
 
+    // Campos controlados del formulario. `emailError` es validación local, no del servidor.
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf<String?>(null) }
 
+    // Reacciona al éxito una sola vez por emisión. La navegación no se hace durante el
+    // clic para no mezclar la acción de red con el cambio de pantalla.
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
             onLoginSuccess()
         }
     }
 
-    /** Valida las precondiciones del flujo: validate and login. Consulte el catálogo de métodos y conceptos en la guía maestra. */
+    /**
+     * Valida el correo y, si el formulario está completo, inicia sesión.
+     *
+     * `Patterns.EMAIL_ADDRESS` es una comprobación de formato, no de existencia: un correo
+     * bien escrito puede no estar registrado y el backend responderá con error. Se exige
+     * correo y contraseña no vacíos; el correo se envía sin espacios laterales, la
+     * contraseña se envía tal como se escribió.
+     */
     fun validateAndLogin() {
         emailError = if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             "Ingresa un correo válido"
@@ -84,7 +135,7 @@ fun LoginScreen(
         ) {
             Spacer(Modifier.height(Dimens.spacingXl))
 
-            // Brand Symbol Vessel
+            // Marca: símbolo de estacionamiento dentro de un halo y una superficie circular.
             Box(
                 modifier = Modifier
                     .size(80.dp)
@@ -117,7 +168,7 @@ fun LoginScreen(
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
-            // Brand Name & Dot
+            // Nombre de la marca con el punto de acento.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -148,7 +199,8 @@ fun LoginScreen(
 
             Spacer(Modifier.height(Dimens.spacingXl))
 
-            // Form Inputs
+            // Formulario: correo electrónico. Al escribir se limpia el error local y el
+            // error del backend para que el mensaje viejo no confunda al usuario.
             ParkeoTextField(
                 value = email,
                 onValueChange = {
@@ -172,6 +224,8 @@ fun LoginScreen(
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
+            // Contraseña: `isPassword` activa la transformación visual y el botón para
+            // mostrar u ocultar. "Listo" en el teclado valida y envía el formulario.
             ParkeoTextField(
                 value = password,
                 onValueChange = {
@@ -195,7 +249,8 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Backend Error Banner
+            // Banner de error del backend: credenciales inválidas, red caída o mensaje del
+            // servidor. Se muestra debajo del formulario y desaparece al editar un campo.
             uiState.error?.let { errorMsg ->
                 Spacer(Modifier.height(Dimens.spacingMd))
                 Surface(
@@ -230,7 +285,9 @@ fun LoginScreen(
 
             Spacer(Modifier.height(Dimens.spacingLg))
 
-            // Submit Button
+            // Acción principal: se deshabilita si falta un campo y muestra un indicador de
+            // progreso mientras `isLoading` es verdadero. ParkeoButton también deshabilita
+            // el clic durante la carga para evitar envíos duplicados.
             ParkeoButton(
                 text = "Iniciar sesión",
                 onClick = { validateAndLogin() },
@@ -244,7 +301,7 @@ fun LoginScreen(
 
             Spacer(Modifier.height(Dimens.spacingMd))
 
-            // Navigation to Register
+            // Enlace secundario al registro: no envía el formulario ni valida el correo.
             TextButton(
                 onClick = onNavigateToRegister,
                 colors = ButtonDefaults.textButtonColors(
@@ -267,116 +324,6 @@ fun LoginScreen(
             }
 
             Spacer(Modifier.height(Dimens.spacingLg))
-
-            // Test Access Chips Container
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = ParkeoCardShape,
-                color = extended.surface1,
-                border = androidx.compose.foundation.BorderStroke(
-                    Dimens.borderHairline,
-                    extended.borderSubtle
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(Dimens.spacingMd),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "ACCESO RÁPIDO DE PRUEBAS",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = extended.textTertiary,
-                        letterSpacing = 1.sp
-                    )
-
-                    Spacer(Modifier.height(Dimens.spacingSm))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        QuickLoginChip(
-                            modifier = Modifier.weight(1f),
-                            role = "Admin",
-                            icon = Icons.Filled.AdminPanelSettings,
-                            color = extended.accent,
-                            onClick = {
-                                email = "admin@parkeo.pe"
-                                password = "Password123!"
-                                viewModel.login("admin@parkeo.pe", "Password123!")
-                            }
-                        )
-
-                        QuickLoginChip(
-                            modifier = Modifier.weight(1f),
-                            role = "Operador",
-                            icon = Icons.Filled.Badge,
-                            color = extended.signalAmber,
-                            onClick = {
-                                email = "operador@parkeo.pe"
-                                password = "Password123!"
-                                viewModel.login("operador@parkeo.pe", "Password123!")
-                            }
-                        )
-
-                        QuickLoginChip(
-                            modifier = Modifier.weight(1f),
-                            role = "Cliente",
-                            icon = Icons.Filled.Person,
-                            color = extended.textPrimary,
-                            onClick = {
-                                email = "cliente@parkeo.pe"
-                                password = "Password123!"
-                                viewModel.login("cliente@parkeo.pe", "Password123!")
-                            }
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(Dimens.spacingLg))
-        }
-    }
-}
-
-@Composable
-/** Ejecuta la operación indicada por el nombre: quick login chip. Consulte el catálogo de métodos y conceptos en la guía maestra. */
-private fun QuickLoginChip(
-    modifier: Modifier = Modifier,
-    role: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    color: Color,
-    onClick: () -> Unit
-) {
-    val extended = ParkeoTheme.colors
-    Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
-        color = extended.surface2,
-        shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(Dimens.borderHairline, extended.borderSubtle)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(15.dp)
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = role,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = extended.textPrimary,
-                maxLines = 1
-            )
         }
     }
 }

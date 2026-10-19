@@ -1,3 +1,19 @@
+@rem ============================================================================
+@rem PARKeo · Android
+@rem Archivo: gradlew.bat
+@rem Tipo/capa: script de arranque del Gradle Wrapper para Windows.
+@rem Proposito: localizar la JVM, ejecutar gradle/wrapper/gradle-wrapper.jar y
+@rem            delegar en la distribucion de Gradle fijada en
+@rem            gradle/wrapper/gradle-wrapper.properties.
+@rem Conceptos clave: wrapper, JAVA_HOME, JAVA_OPTS, GRADLE_OPTS,
+@rem            DEFAULT_JVM_OPTS y diferencia entre la JVM de arranque y el
+@rem            daemon de Gradle.
+@rem Relacion: es el equivalente Windows de gradlew; ambos comparten el JAR y
+@rem            las propiedades del wrapper. La logica interna esta generada por
+@rem            Gradle, por lo que se documenta sin modificarla.
+@rem Guia: docs/GUIA_MAESTRA_ESTUDIANTE.md
+@rem ============================================================================
+
 @rem
 @rem Copyright 2015 the original author or authors.
 @rem
@@ -15,6 +31,10 @@
 @rem
 @rem SPDX-License-Identifier: Apache-2.0
 @rem
+
+@rem NOTA: el resto del archivo es el script generado por Gradle. No conviene
+@rem editar su logica: para actualizar el wrapper se regenera con la tarea
+@rem wrapper del propio Gradle.
 
 @if "%DEBUG%"=="" @echo off
 @rem ##########################################################################
@@ -68,6 +88,11 @@ echo location of your Java installation. 1>&2
 goto fail
 
 :execute
+@rem ----------------------------------------------------------------------------
+@rem Arranque del wrapper: usa la JVM encontrada, aplica las opciones de memoria
+@rem de arranque y ejecuta el JAR del wrapper con todos los argumentos recibidos.
+@rem La memoria del daemon de Gradle se define en gradle.properties, no aqui.
+@rem ----------------------------------------------------------------------------
 @rem Setup the command line
 
 set CLASSPATH=

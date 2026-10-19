@@ -1,12 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/drawable/ic_launcher_background.xml
+     Tipo/capa: drawable vectorial (capa de fondo del icono adaptativo).
+     Propósito: pintar la placa de fondo que el lanzador coloca detrás del
+     `foreground` del icono adaptativo. Es la capa inferior de
+     `mipmap-anydpi-v26/ic_launcher.xml` y `ic_launcher_round.xml`.
+     Conceptos clave: `VectorDrawable`, `viewportWidth`/`viewportHeight`,
+     densidad independiente (`dp`), icono adaptativo, zona segura y máscara del
+     lanzador, colores con alfa y trazos de construcción.
+     Relación: el primer `path` cubre todo el lienzo y define el color de fondo;
+     la cuadrícula transparente con líneas blancas semitransparentes es una guía
+     de construcción heredada de la plantilla de Android Studio. El icono
+     completo se compone con `ic_launcher_foreground.xml`; el sistema recorta
+     ambas capas con la forma del lanzador (círculo, cuadrado redondeado, etc.).
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
+<!-- Lienzo de 108 x 108 dp con un viewport de 108 unidades: cada unidad del
+     `pathData` equivale a 1 dp. El icono adaptativo trabaja en 108 dp, pero solo
+     la zona central (aproximadamente 72 x 72 dp) está garantizada como visible;
+     los bordes pueden recortarse según la máscara del lanzador. -->
 <vector
     android:height="108dp"
     android:width="108dp"
     android:viewportHeight="108"
     android:viewportWidth="108"
     xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Placa de fondo completa: `M0,0h108v108h-108z` dibuja un cuadrado que
+         cubre todo el viewport. El color `#3DDC84` es el verde de la plantilla
+         de Android; la capa superior aporta la identidad visual de PARKeo. -->
     <path android:fillColor="#3DDC84"
           android:pathData="M0,0h108v108h-108z"/>
+
+    <!-- Guías verticales de la plantilla, separadas cada 10 unidades. El relleno
+         es transparente (`#00000000`), por lo que solo se ve el trazo blanco al
+         20 % (`#33FFFFFF`) de 0.8 unidades. No son parte de la marca: ayudan a
+         ubicar el contenido respecto de la zona segura del icono adaptativo. -->
     <path android:fillColor="#00000000" android:pathData="M9,0L9,108"
           android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
     <path android:fillColor="#00000000" android:pathData="M19,0L19,108"
@@ -27,6 +57,10 @@
           android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
     <path android:fillColor="#00000000" android:pathData="M99,0L99,108"
           android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
+
+    <!-- Guías horizontales equivalentes a las verticales, también cada 10
+         unidades y con el mismo trazo semitransparente. Juntas forman la retícula
+         de referencia de 108 x 108. -->
     <path android:fillColor="#00000000" android:pathData="M0,9L108,9"
           android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
     <path android:fillColor="#00000000" android:pathData="M0,19L108,19"
@@ -47,6 +81,10 @@
           android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
     <path android:fillColor="#00000000" android:pathData="M0,99L108,99"
           android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
+
+    <!-- Retícula interior de la plantilla: líneas horizontales entre x=19 y
+         x=89, y verticales entre y=19 e y=89. Delimitan visualmente el área
+         central donde conviene concentrar el motivo principal del icono. -->
     <path android:fillColor="#00000000" android:pathData="M19,29L89,29"
           android:strokeColor="#33FFFFFF" android:strokeWidth="0.8"/>
     <path android:fillColor="#00000000" android:pathData="M19,39L89,39"

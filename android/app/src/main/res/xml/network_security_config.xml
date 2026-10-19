@@ -1,14 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- =========================================================================
+     PARKeo · Android
+     Archivo: app/src/main/res/xml/network_security_config.xml
+     Tipo/capa: configuración de seguridad de red (Network Security Config).
+     Propósito: declarar qué conexiones aceptan tráfico sin TLS (`cleartext`) y
+     en qué anclas de confianza se apoyan los certificados. Se referencia desde
+     `AndroidManifest.xml` con `android:networkSecurityConfig`.
+     Conceptos clave: `base-config` (regla general), `domain-config` (regla por
+     dominio), `cleartextTrafficPermitted`, `trust-anchors`, certificados del
+     sistema y direcciones de loopback/emulador.
+     Relación: el backend local Spring Boot se levanta por HTTP en el puerto
+     8080. `BuildConfig.BASE_URL` (en `app/build.gradle.kts`) apunta a una IP de
+     LAN en debug, mientras que release usa `https://api.parkeo.pe/`. Esta
+     configuración permite las pruebas locales; no debe trasladarse tal cual a
+     producción.
+     Guía: docs/GUIA_MAESTRA_ESTUDIANTE.md
+     ========================================================================= -->
+
 <network-security-config>
+    <!-- Regla general para todas las conexiones. `cleartextTrafficPermitted=true`
+         permite HTTP en claro sin importar el dominio, algo necesario para el
+         backend de desarrollo. `trust-anchors` con `src="system"` acepta las CA
+         preinstaladas del dispositivo; no se añaden certificados propios, por lo
+         que un proxy con CA personalizada no sería confiado automáticamente. -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+
+    <!-- Reglas explícitas para los destinos locales de desarrollo. Aunque
+         `base-config` ya permite claro, este bloque documenta las direcciones
+         usadas y facilita endurecer la política: bastaría poner el `base-config`
+         en `false` y dejar solo estos dominios mientras se desarrolla.
+         - `localhost`: nombre local del propio dispositivo.
+         - `127.0.0.1`: loopback IPv4 del dispositivo.
+         - `10.0.2.2`: alias especial del emulador Android para alcanzar el
+           `localhost` de la máquina anfitriona.
+         - `10.195.92.216`: IP de la red local usada por la máquina de desarrollo
+           para que un teléfono físico llegue al backend.
+         `includeSubdomains="true"` extiende la regla a subdominios; en direcciones
+         IP no hay subdominios reales, pero se mantiene por coherencia. -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">10.195.92.216</domain>
     </domain-config>
+
+    <!-- Nota de seguridad: para producción se debe permitir solo HTTPS
+         (`cleartextTrafficPermitted=false`), eliminar las IP locales y confiar
+         únicamente en certificados del sistema o en una CA corporativa
+         controlada. Mantener HTTP abierto permite ataques de intercepción. -->
 </network-security-config>
