@@ -2,11 +2,9 @@ package pe.parkeo.ui.screens.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -16,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -264,115 +261,6 @@ fun LoginScreen(
             }
 
             Spacer(Modifier.height(Dimens.spacingLg))
-
-            // Test Access Chips Container
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = ParkeoCardShape,
-                color = extended.surface1,
-                border = androidx.compose.foundation.BorderStroke(
-                    Dimens.borderHairline,
-                    extended.borderSubtle
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(Dimens.spacingMd),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "ACCESO RÁPIDO DE PRUEBAS",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = extended.textTertiary,
-                        letterSpacing = 1.sp
-                    )
-
-                    Spacer(Modifier.height(Dimens.spacingSm))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        QuickLoginChip(
-                            modifier = Modifier.weight(1f),
-                            role = "Admin",
-                            icon = Icons.Filled.AdminPanelSettings,
-                            color = extended.accent,
-                            onClick = {
-                                email = "admin@parkeo.pe"
-                                password = "Password123!"
-                                viewModel.login("admin@parkeo.pe", "Password123!")
-                            }
-                        )
-
-                        QuickLoginChip(
-                            modifier = Modifier.weight(1f),
-                            role = "Operador",
-                            icon = Icons.Filled.Badge,
-                            color = extended.signalAmber,
-                            onClick = {
-                                email = "operador@parkeo.pe"
-                                password = "Password123!"
-                                viewModel.login("operador@parkeo.pe", "Password123!")
-                            }
-                        )
-
-                        QuickLoginChip(
-                            modifier = Modifier.weight(1f),
-                            role = "Cliente",
-                            icon = Icons.Filled.Person,
-                            color = extended.textPrimary,
-                            onClick = {
-                                email = "cliente@parkeo.pe"
-                                password = "Password123!"
-                                viewModel.login("cliente@parkeo.pe", "Password123!")
-                            }
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(Dimens.spacingLg))
-        }
-    }
-}
-
-@Composable
-private fun QuickLoginChip(
-    modifier: Modifier = Modifier,
-    role: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    color: Color,
-    onClick: () -> Unit
-) {
-    val extended = ParkeoTheme.colors
-    Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
-        color = extended.surface2,
-        shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(Dimens.borderHairline, extended.borderSubtle)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(15.dp)
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = role,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = extended.textPrimary,
-                maxLines = 1
-            )
         }
     }
 }
