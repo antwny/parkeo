@@ -1,234 +1,210 @@
-# PARKeo — Seguridad
+# PARKeo — Documentación de Seguridad
 
 ## Modelo de seguridad
 
-La seguridad de PARKeo está implementada en múltiples capas, siguiendo el principio de "Defense in Depth":
+PARKeo usa autenticación **stateless** con JWT y autorización basada en roles (RBAC).
 
 ```
-Base de datos → Backend → API REST → Android
+Cliente → POST /api/auth/login
+        ↓
+Spring Security valida credenciales (BCrypt factor 12)
+        ↓
+Emite access token (JWT) + refresh token
+        ↓
+Cliente envía Authorization: Bearer <accessToken>
+        ↓
+JwtAuthenticationFilter valida firma y expiración
+        ↓
+SecurityContext con authorities ROLE_*
+        ↓
+@PreAuthorize / reglas de SecurityConfig autorizan el acceso
 ```
 
 ---
 
-## Autenticación — JWT
+## Roles y permisos
 
-### Configuración de tokens
+| Rol | Descripción |
+|---|---|
+| `ROLE_USER` | Cliente: consulta cocheras, gestiona vehículos y reservas |
+| `ROLE_OPERATOR` | Operador: gestiona espacios y reservas de sus cocheras asignadas |
+| `ROLE_ADMIN` | Administrador: gestión global de cocheras, operadores y usuarios |
 
-| Parámetro | Valor (desarrollo) | Descripción |
-|-----------|-------------------|-------------|
-| Algoritmo | HS256 | HMAC SHA-256 |
-| Clave secreta | Mínimo 256 bits | Variable de entorno JWT_SECRET |
-| Access token TTL | 24 horas | Configurable via JWT_EXPIRATION |
-| Refresh token TTL | 7 días | Configurable via JWT_REFRESH_EXPIRATION |
+### Matriz de acceso
 
-### Claims en el JWT
+| Recurso | Público | USER | OPERATOR | ADMIN |
+|---|---|---|---|---|
+| `POST /api/auth/**` | ✅ | ✅ | ✅ | ✅ |
+| `GET /api/parking/**` | ✅ | ✅ | ✅ | ✅ |
+| `POST /api/v1/availability/check` | ❌ | ✅ | ✅ | ✅ |
+| `/api/users/me/**` | ❌ | ✅ | ✅ | ✅ |
+| `/api/vehicles/**` | ❌ | ✅ | ✅ | ✅ |
+| `/api/reservations/**` | ❌ | ✅ | ✅ | ✅ |
+| `/api/operator/**` | ❌ | ❌ | ✅ | ✅ |
+| `/api/admin/**` | ❌ | ❌ | ❌ | ✅ |
+| Swagger / OpenAPI | ✅ | ✅ | ✅ | ✅ |
+| `/actuator/health`, `/actuator/info` | ✅ | ✅ | ✅ | ✅ |
 
-```json
-{
-  "sub": "42",
-  "email": "cliente@parkeo.pe",
-  "role": "CLIENTE",
-  "iat": 1750000000,
-  "exp": 1750086400
-}
-```
-
-### Flujo de refresh
-
-1. Access token expirado → Android recibe 401
-2. Android envía refresh token a `POST /api/auth/refresh`
-3. Backend valida: token en BD, no revocado, no expirado
-4. Backend emite nuevo access token + nuevo refresh token
-5. Refresh token anterior se revoca (rotación)
-6. Si el refresh token también expiró → redirigir a login
+`@EnableMethodSecurity` está activo. `OperatorController` usa `@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_OPERATOR')")` y `AdminController` usa `@PreAuthorize("hasAuthority('ROLE_ADMIN')")`.
 
 ---
 
-## Autorización — RBAC (Role-Based Access Control)
+## Autenticación
 
-### Roles y permisos
+### Contraseñas
 
-| Recurso | CLIENTE | OPERADOR | ADMIN |
-|---------|---------|----------|-------|
-| Ver estacionamientos | ✅ | ✅ | ✅ |
-| Ver disponibilidad | ✅ | ✅ | ✅ |
-| Crear reserva | ✅ | ❌ | ✅ |
-| Cancelar su reserva | ✅ | ❌ | ✅ |
-| Ver sus vehículos | ✅ | ❌ | ✅ |
-| Gestionar sus vehículos | ✅ | ❌ | ✅ |
-| Ver estacionamientos asignados | ❌ | ✅ | ✅ |
-| Actualizar estado de espacios | ❌ | ✅ | ✅ |
-| Ver reservas de sus estac. | ❌ | ✅ | ✅ |
-| Gestionar todos los usuarios | ❌ | ❌ | ✅ |
-| Crear estacionamientos | ❌ | ❌ | ✅ |
-| Ver estadísticas globales | ❌ | ❌ | ✅ |
+- Hash con **BCrypt factor 12** (`new BCryptPasswordEncoder(12)`).
+- Las contraseñas nunca se almacenan ni se devuelven en texto plano.
+- Validación mínima: 8 caracteres.
 
-### Implementación en Spring Security
+### Access token (JWT)
+
+| Atributo | Valor |
+|---|---|
+| Algoritmo | HS256 |
+| Emisor | `parkeo-backend` |
+| Subject | ID del usuario |
+| Claims | `email`, `role` |
+| Vida útil | 24 horas (`JWT_EXPIRATION=86400000`) |
+| Transporte | `Authorization: Bearer <token>` |
+
+Claim `role` contiene el nombre completo del rol (`ROLE_USER`, `ROLE_OPERATOR` o `ROLE_ADMIN`).
+
+### Refresh token
+
+| Atributo | Valor |
+|---|---|
+| Formato | UUID aleatorio |
+| Vida útil | 7 días (`JWT_REFRESH_EXPIRATION=604800000`) |
+| Almacenamiento | Tabla `refresh_tokens` |
+| Revocación | Al hacer logout o al renovar (rotación) |
+| Limpieza | Job diario a las 2:00 AM para tokens expirados/revocados |
+
+Flujo de rotación:
+
+1. El cliente envía el refresh token a `POST /api/auth/refresh`.
+2. El servidor valida que no esté revocado ni expirado.
+3. Revoca el token anterior.
+4. Emite un nuevo access token y un nuevo refresh token.
+
+### Cierre de sesión
+
+`POST /api/auth/logout` revoca el refresh token enviado. El access token sigue siendo válido hasta su expiración (24 h), por lo que en producción se recomienda una duración menor o una lista de revocación.
+
+---
+
+## Autorización
+
+### A nivel de endpoint
+
+`SecurityConfig` establece:
 
 ```java
-// SecurityConfig.java
-http.authorizeHttpRequests(auth -> auth
-    .requestMatchers("/api/auth/**").permitAll()
-    .requestMatchers("/api/admin/**").hasRole("ADMIN")
-    .requestMatchers("/api/operator/**").hasAnyRole("ADMIN", "OPERADOR")
-    .anyRequest().authenticated()
-);
+.requestMatchers(PUBLIC_PATHS).permitAll()
+.requestMatchers(HttpMethod.GET, "/api/parking/**").permitAll()
+.requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+.requestMatchers("/api/operator/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_OPERATOR")
+.anyRequest().authenticated()
 ```
 
-### Acceso horizontal (Horizontal Access Control)
+Rutas públicas:
 
-Prevención de que un usuario acceda a recursos de otro:
-
-```java
-// VehicleService.java
-public VehicleResponse getVehicle(Long vehicleId, Long authenticatedUserId) {
-    Vehicle vehicle = vehicleRepository.findById(vehicleId)
-        .orElseThrow(() -> new ResourceNotFoundException("Vehículo no encontrado"));
-    
-    // Verificación de ownership
-    if (!vehicle.getUser().getId().equals(authenticatedUserId)) {
-        throw new UnauthorizedException("No tienes permiso para acceder a este recurso");
-    }
-    return mapper.toResponse(vehicle);
-}
+```
+/api/auth/**
+/swagger-ui/**
+/swagger-ui.html
+/v3/api-docs/**
+/api-docs/**
+/api-docs.yaml
+/actuator/health
+/actuator/info
+GET /api/parking/**
 ```
 
----
+### A nivel de servicio (acceso horizontal)
 
-## Contraseñas — BCrypt
+Además del rol, el backend valida la propiedad del recurso:
 
-- **Factor de coste**: 10 (balance entre seguridad y rendimiento)
-- Las contraseñas nunca se almacenan en texto plano
-- Las contraseñas nunca se retornan en respuestas API
-- Los logs nunca incluyen contraseñas
+- Un cliente solo puede ver y cancelar sus propias reservas.
+- Un cliente solo puede modificar sus propios vehículos.
+- Un operador solo accede a las cocheras que tiene asignadas (`operator_id`).
+- El administrador puede acceder a todos los recursos.
 
-```java
-@Bean
-public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder(10);
-}
-```
+Estas validaciones se aplican en la capa de servicio y devuelven `403` o `404` según corresponda.
 
 ---
 
-## Validación de entradas
+## Sesión en Android
 
-### Backend (Bean Validation)
-
-```java
-public class RegisterRequest {
-    @NotBlank @Email
-    private String email;
-    
-    @NotBlank @Size(min = 8, max = 100)
-    @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).*$",
-             message = "La contraseña debe contener mayúsculas, minúsculas y números")
-    private String password;
-    
-    @NotBlank @Size(min = 2, max = 100)
-    private String firstName;
-}
-```
-
-### Android (validación en cliente)
-
-Los formularios en Android validan antes de enviar, pero **la validación del servidor es la autoritativa**. La validación en cliente es solo UX.
+- Los tokens se guardan en **DataStore**, no en `SharedPreferences` en texto plano.
+- `AuthInterceptor` agrega `Authorization: Bearer` a cada request.
+- Ante un `401`, el interceptor intenta renovar el token con `/api/auth/refresh`.
+- Si la renovación falla, se limpia la sesión y se redirige a Login.
+- El `refreshToken` se envía solo a `/api/auth/refresh` y `/api/auth/logout`.
 
 ---
 
-## Protección contra ataques comunes
+## Protecciones implementadas
 
-| Ataque | Mitigación |
-|--------|-----------|
-| SQL Injection | JPA/Hibernate con queries parametrizados |
-| XSS | API REST retorna JSON, no HTML; Spring Security headers |
-| CSRF | Deshabilitado (API stateless con JWT, no cookies de sesión) |
-| Brute Force | (Recomendado en producción: rate limiting con Redis) |
-| Token theft | HTTPS en producción; tokens de corta duración |
-| Broken Object Level Auth | Verificación de ownership en capa de servicio |
-| Sensitive Data Exposure | BCrypt para contraseñas; no retornar password_hash; HTTPS |
-
----
-
-## CORS
-
-```java
-// CorsConfig.java
-@Configuration
-public class CorsConfig {
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        // En desarrollo: permitir el emulador Android
-        config.setAllowedOriginPatterns(List.of("*"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(false);
-        
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
-        return source;
-    }
-}
-```
-
-> ⚠️ En producción, `allowedOriginPatterns` debe restringirse al dominio específico.
+| Protección | Implementación |
+|---|---|
+| Inyección SQL | Spring Data JPA con consultas parametrizadas |
+| CSRF | Deshabilitado por ser API stateless con JWT |
+| Sesiones | `SessionCreationPolicy.STATELESS` |
+| Fuerza bruta | BCrypt factor 12 (mitigación parcial) |
+| Exposición de datos | DTOs de respuesta, sin entidades JPA directas |
+| Validación de entrada | Bean Validation (`@Valid`, `@NotBlank`, `@Email`, etc.) |
+| Errores | `GlobalExceptionHandler` con mensajes controlados |
+| Secretos | Variables de entorno (`JWT_SECRET`, `DB_PASSWORD`) |
+| CORS | Configurado en `CorsConfig` |
+| Contraseñas | BCrypt, nunca en logs |
 
 ---
 
-## Gestión de secretos
+## Configuración de CORS
 
-### Variables de entorno requeridas
+`CorsConfig` permite:
 
-| Variable | Descripción | Ejemplo (NO usar en producción) |
-|----------|-------------|--------------------------------|
-| `DB_URL` | URL de conexión MySQL | `jdbc:mysql://localhost:3306/parkeo_db` |
-| `DB_USERNAME` | Usuario MySQL | `antwny` |
-| `DB_PASSWORD` | Contraseña MySQL | (usar variable real) |
-| `JWT_SECRET` | Clave secreta JWT (mínimo 256 bits) | (generar aleatoriamente) |
-| `GOOGLE_MAPS_API_KEY` | API Key de Google Maps | (obtener de Google Cloud Console) |
+- Orígenes: `*` mediante `allowedOriginPatterns`.
+- Métodos: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
+- Headers: `Authorization`, `Content-Type`, `X-Requested-With`, `Accept`, `Origin`.
+- Credenciales: `allowCredentials=true`.
+- Cache: 3600 segundos.
 
-### Reglas
-
-1. **NUNCA** hardcodear secretos en código fuente
-2. **NUNCA** hacer commit de `.env`, `local.properties`, o archivos de credenciales
-3. Los archivos `.gitignore` cubren todos los archivos sensibles
-4. En producción, usar secretos gestionados (AWS Secrets Manager, GCP Secret Manager, etc.)
+> ⚠️ Para producción, restringe `allowedOriginPatterns` a los dominios reales. La combinación de `*` con credenciales es demasiado permisiva.
 
 ---
 
-## Headers de seguridad HTTP
+## Riesgos y recomendaciones
 
-Spring Security agrega automáticamente:
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
-- `X-XSS-Protection: 0` (moderno)
-- `Cache-Control: no-cache, no-store, max-age=0, must-revalidate`
-
----
-
-## Auditoría
-
-La tabla `audit_log` registra eventos sensibles:
-- Login exitoso
-- Intento de login fallido
-- Creación/cancelación de reservas
-- Cambios de contraseña
-- Modificaciones de usuarios por admin
-
-Los logs no incluyen contraseñas, tokens completos ni información de tarjetas.
+| Riesgo | Recomendación |
+|---|---|
+| CORS abierto | Restringir orígenes por entorno |
+| Refresh token en texto plano en BD | Almacenar solo un hash (SHA-256) y comparar hashes |
+| Access token de 24 h | Reducir a 15–60 minutos y usar refresh tokens |
+| Sin rate limiting | Agregar límite en login/refresh (Redis, Bucket4j o API Gateway) |
+| Sin bloqueo por intentos fallidos | Bloquear cuenta temporalmente tras N intentos |
+| Sin HTTPS en desarrollo | Usar TLS en producción (Nginx + Let's Encrypt) |
+| Sin auditoría automática | Integrar escritura en `audit_log` desde servicios o AOP |
+| Swagger público | Proteger o deshabilitar en producción |
+| `JWT_SECRET` de desarrollo | Generar secreto aleatorio de al menos 256 bits |
+| Sin verificación de email | Implementar flujo de verificación y recuperación de contraseña |
+| Sin revocación de access tokens | Lista negra en Redis o tokens de corta duración |
 
 ---
 
-## Checklist de seguridad para producción
+## Checklist para producción
 
-- [ ] Cambiar JWT_SECRET a una clave aleatoria de 512 bits
-- [ ] Configurar HTTPS con certificado válido (Let's Encrypt)
-- [ ] Restringir CORS al dominio de producción
-- [ ] Configurar rate limiting (Redis + Bucket4j)
-- [ ] Revocar tokens de desarrollo
-- [ ] Cambiar contraseñas de usuarios de prueba o desactivarlos
-- [ ] Configurar firewall para que MySQL no sea accesible públicamente
-- [ ] Habilitar binary logging de MySQL para auditoría
-- [ ] Configurar alerts de seguridad
-- [ ] Revisar permisos del usuario MySQL de producción
+- [ ] Configurar HTTPS y HSTS.
+- [ ] Generar `JWT_SECRET` aleatorio y almacenarlo en un gestor de secretos.
+- [ ] Restringir CORS a dominios conocidos.
+- [ ] Cambiar todas las credenciales de prueba.
+- [ ] Crear un usuario administrador propio y desactivar los de demo.
+- [ ] Deshabilitar o proteger Swagger.
+- [ ] Reducir la vida del access token.
+- [ ] Agregar rate limiting en autenticación.
+- [ ] Activar backups de MySQL.
+- [ ] Configurar logs centralizados y alertas.
+- [ ] Revisar dependencias con `mvn dependency-check:check`.
+- [ ] Configurar firewall y acceso restringido a MySQL.
+- [ ] Habilitar auditoría en `audit_log`.

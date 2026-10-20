@@ -1,87 +1,89 @@
 # PARKeo — Flujos de Usuario
 
-## Flujo Principal (Happy Path)
+## Roles del sistema
+
+| Rol | Pantallas principales |
+|---|---|
+| `ROLE_USER` (cliente) | Explorar, Reservas, Vehículos, Perfil |
+| `ROLE_OPERATOR` | Espacios, Reservas, Explorar, Perfil |
+| `ROLE_ADMIN` | Métricas, Cocheras, Usuarios, Explorar, Perfil |
+
+La app determina el menú inferior a partir del rol devuelto por el backend.
+
+---
+
+## Flujo principal del cliente
 
 ```
-Splash (1.5s)
+Splash
     ↓
-    ¿Sesión válida?
-    ├── SÍ → Mapa (pantalla principal)
-    └── NO → Onboarding (1a vez) | Login
-    
-Onboarding (Puede omitirse)
+¿Sesión válida?
+├── SÍ → Home (mapa)
+└── NO → Onboarding (primera vez) | Login
+
+Login / Registro
     ↓
-Login
+Home: mapa + lista de estacionamientos
     ↓
-Mapa con ubicación actual + marcadores de estacionamientos
-    ↓
-Seleccionar estacionamiento en mapa | Buscar | Listar
+Seleccionar estacionamiento (mapa, búsqueda o lista)
     ↓
 Detalle del estacionamiento
     ↓
 [Reservar]
     ↓
-Seleccionar fecha
-    ↓
-Seleccionar hora inicio + duración
+Seleccionar fecha, hora y duración
     ↓
 Seleccionar vehículo
     ↓
-Resumen de reserva
+Resumen con precio calculado por el servidor
     ↓
-[Confirmar]
+[Confirmar reserva]
     ↓
-Reserva creada ✅
+Reserva creada (PENDING)
     ↓
 Mis Reservas
+    ↓
+Boarding pass QR + recordatorios de inicio/fin
 ```
 
 ---
 
-## Flujos Alternativos
+## Flujos alternativos
 
 ### Permiso de ubicación rechazado
 
 ```
-Solicitar permiso ACCESS_FINE_LOCATION
+Solicitar ACCESS_FINE_LOCATION
     ↓
-    ├── Concedido → Centrar mapa en ubicación actual
-    ├── Denegado (1a vez) → Explicación → Solicitar de nuevo
-    └── Denegado permanentemente → 
-            Explicar que el mapa aún funciona sin ubicación
-            Mostrar mapa sin centrado automático
-            Permitir buscar manualmente
+├── Concedido → Centrar mapa en la ubicación actual
+├── Denegado → Explicación y reintento
+└── Denegado permanentemente →
+        El mapa sigue funcionando sin centrado automático
+        El usuario puede buscar manualmente
 ```
 
-### Token expirado durante uso
+### Token expirado durante el uso
 
 ```
 Request con access token expirado → 401
     ↓
-Interceptor OkHttp detecta 401
+AuthInterceptor intenta POST /api/auth/refresh
     ↓
-Intentar refresh: POST /api/auth/refresh
-    ↓
-    ├── Éxito → Guardar nuevos tokens → Reintentar request original
-    └── Fallo (refresh expirado o revocado) → 
-            Limpiar tokens de DataStore
-            Navegar a Login
-            Mostrar mensaje: "Tu sesión ha expirado"
+├── Éxito → Guardar tokens nuevos → Reintentar request original
+└── Fallo → Limpiar sesión → Navegar a Login
 ```
 
-### Estacionamiento lleno
+### Estacionamiento sin disponibilidad
 
 ```
-Ver detalle de estacionamiento
+Ver detalle
     ↓
 [Reservar]
     ↓
-Verificar disponibilidad para la fecha/hora seleccionada
+Consultar disponibilidad para fecha/hora seleccionada
     ↓
-    └── Sin espacios disponibles → 
-            Mostrar mensaje: "No hay espacios disponibles"
-            Mostrar otros estacionamientos cercanos
-            Sugerir horarios alternativos si los hay
+└── Sin espacios → "No hay espacios disponibles"
+                   Mostrar otros estacionamientos cercanos
 ```
 
 ### Error de red
@@ -89,10 +91,9 @@ Verificar disponibilidad para la fecha/hora seleccionada
 ```
 Cualquier request HTTP
     ↓
-    └── Sin conexión / Timeout →
-            Mostrar estado "Sin conexión"
-            Mostrar datos en caché si disponibles
-            Botón "Reintentar"
+└── Sin conexión / timeout →
+        Mostrar estado de error
+        Botón "Reintentar"
 ```
 
 ### Registro de nuevo usuario
@@ -100,115 +101,151 @@ Cualquier request HTTP
 ```
 Formulario de registro
     ↓
-Validación en tiempo real (email, contraseña, nombre)
+Validación en tiempo real
     ↓
 [Registrarse]
     ↓
-    ├── Éxito → Login automático → Mapa
-    └── Email ya registrado → Mostrar error específico
-    └── Error de validación → Marcar campos incorrectos
+├── Éxito → Sesión iniciada → Home
+└── Email ya registrado → Error específico
+```
+
+---
+
+## Flujo del operador
+
+```
+Login como ROLE_OPERATOR
+    ↓
+Pestaña "Espacios"
+    ↓
+Seleccionar cochera asignada
+    ↓
+Ver espacios (AVAILABLE, OCCUPIED, RESERVED, MAINTENANCE, INACTIVE)
+    ↓
+Cambiar estado de un espacio
+    ↓
+Pestaña "Reservas"
+    ↓
+Ver reservas de la cochera (filtros por estado)
+    ↓
+[Registrar ingreso]  → PENDING/CONFIRMED → ACTIVE
+    ↓                  Espacio → OCCUPIED
+    ↓                  available_spaces - 1
+[Registrar salida]   → ACTIVE → COMPLETED
+                       Espacio → AVAILABLE
+                       available_spaces + 1
+```
+
+El operador solo puede acceder a los estacionamientos que tiene asignados. El administrador puede operar sobre todos.
+
+---
+
+## Flujo del administrador
+
+```
+Login como ROLE_ADMIN
+    ↓
+Pestaña "Métricas"
+    ↓
+Ver total de cocheras, reservas y reservas por estado
+    ↓
+Pestaña "Cocheras"
+    ↓
+Listar todas las cocheras (activas e inactivas)
+    ↓
+Abrir/cerrar cochera, activar/desactivar o asignar operador
+    ↓
+Pestaña "Usuarios"
+    ↓
+Listar usuarios y activar/desactivar cuentas
 ```
 
 ---
 
 ## Estados de UI
 
-Cada pantalla debe manejar estos estados:
-
 | Estado | UI |
-|--------|-----|
-| **Loading** | CircularProgressIndicator centrado o skeleton |
-| **Success** | Contenido normal |
-| **Empty** | Ilustración + mensaje + acción sugerida |
-| **Error** | Mensaje descriptivo + botón "Reintentar" |
-| **Offline** | Banner de sin conexión + datos en caché si aplica |
-| **Unauthorized** | Redirigir a Login |
+|---|---|
+| Loading | Indicador de carga o skeleton |
+| Success | Contenido normal |
+| Empty | Ilustración/mensaje + acción sugerida |
+| Error | Mensaje descriptivo + botón "Reintentar" |
+| Unauthorized | Redirigir a Login |
 
 ---
 
-## Pantallas y componentes
+## Pantallas principales
 
 ### Splash
-- Logo de PARKeo centrado
-- Fondo en color primario (azul oscuro)
-- Fade out suave
-- Verificar token: si válido → Home, si no → Onboarding/Login
+- Logo y fondo de marca.
+- Verificación de sesión guardada.
+- Redirección a Onboarding/Login o Home.
 
-### Onboarding (3 páginas)
-1. **Encuentra** — "Descubre estacionamientos cerca de ti"
-2. **Consulta** — "Verifica disponibilidad en tiempo real"
-3. **Reserva** — "Asegura tu espacio antes de salir"
-- Paginador con dots indicator
-- Botón "Omitir" (top-right)
-- Botón "Siguiente" / "Comenzar"
+### Onboarding
+- Presentación de las funciones principales.
+- Botón para omitir y botón de avance.
 
-### Login
-- Logo pequeño de Parkeo
-- Campo email (teclado email, validación en tiempo real)
-- Campo contraseña (con toggle de visibilidad)
-- Botón "Iniciar sesión" (loading state mientras hace request)
-- Link "¿No tienes cuenta? Regístrate"
-- Link "¿Olvidaste tu contraseña?"
-- Error: "Correo o contraseña incorrectos" (mensaje genérico por seguridad)
-
-### Registro
-- Nombre
-- Apellido
-- Email
-- Teléfono (opcional)
-- Contraseña (con requisitos visuales: mayúscula, número, longitud)
-- Confirmar contraseña
-- Botón "Registrarse"
-- Link "Ya tengo cuenta"
+### Login / Registro
+- Validación de email y contraseña.
+- Registro de cliente con nombre, apellido, email, teléfono y contraseña.
+- Manejo de errores del backend.
 
 ### Home / Mapa
-- **90% del espacio**: GoogleMap
-  - Marcadores de estacionamientos (icono personalizado de parking)
-  - Color del marcador según disponibilidad: verde/amarillo/rojo/gris
-  - Marcador de ubicación actual
-- **Bottom Sheet** expandible:
-  - Lista de estacionamientos cercanos en cards
-  - Filtros: disponibilidad, precio, tipo, servicios
-- Barra de búsqueda (top)
-- Botón FAB: centrar en ubicación actual
-- IconButton de perfil (top-right)
+- Google Maps con marcadores de estacionamientos.
+- Lista de cocheras cercanas.
+- Búsqueda por nombre/dirección.
+- Acceso a perfil y reservas.
 
 ### Detalle del estacionamiento
-- Hero section: imagen o gradiente con nombre
-- Chips de servicios (Techado, 24h, Cámaras, etc.)
-- Información: dirección, horario hoy, precio desde, distancia
-- Disponibilidad visual: barra de progreso (X de Y espacios)
-- Mapa pequeño estático con la ubicación
-- Calificación (si implementada)
-- Botones: [Ver en mapa] [Reservar]
+- Nombre, dirección, horarios, servicios y tarifas.
+- Disponibilidad y calificación.
+- Botón para reservar.
 
-### Flujo de reserva
-1. **Seleccionar espacio/tipo**: tipo de vehículo disponible
-2. **Fecha y hora**: DatePicker + TimePicker
-3. **Duración**: Picker (1h, 2h, 3h, 4h, 8h, 12h, 24h)
-4. **Seleccionar vehículo**: lista de vehículos del usuario
-5. **Resumen**: estacionamiento, espacio, vehículo, fecha, hora, duración, precio total estimado
-6. **Confirmación**: animación de éxito + detalle de la reserva
+### Creación de reserva
+- Fecha, hora de inicio y duración.
+- Selección de vehículo.
+- Cálculo de precio en servidor.
+- Confirmación y creación de la reserva.
 
-### Mis Reservas
-- Pestañas: Próximas | Activas | Historial
-- Card de reserva: estacionamiento, fecha/hora, vehículo, estado, precio
-- Estado visual diferenciado: chip de color por estado
-- Click → Detalle de reserva
-- Opción cancelar (si aplica)
+### Mis reservas
+- Pestañas/filtros por estado.
+- Detalle de la reserva.
+- Cancelación de reservas `PENDING` o `CONFIRMED`.
+- Boarding pass con código QR para reservas confirmadas/activas.
+- Recordatorios locales de inicio y fin.
 
 ### Vehículos
-- Lista de vehículos con icono por tipo
-- FAB para agregar
-- Swipe to delete (con confirmación)
-- Formulario: tipo, placa, marca, modelo, color
+- Lista de vehículos con tipo y placa.
+- Alta, edición y eliminación.
+- Validación de placa peruana.
 
 ### Perfil
-- Avatar (iniciales si no hay foto)
-- Nombre y email
-- Opciones: Datos personales, Vehículos, Historial, Configuración
-- Toggle Dark/Light mode
-- Cerrar sesión (con confirmación)
+- Datos del usuario y rol.
+- Acceso a vehículos, reservas y configuración.
+- Cierre de sesión.
+
+### Operador — Espacios
+- Selector de cochera asignada.
+- Grilla de espacios con filtros por estado.
+- Cambio de estado con notas.
+
+### Operador — Reservas
+- Reservas de la cochera seleccionada.
+- Búsqueda y filtros por estado.
+- Check-in y check-out.
+
+### Administrador — Métricas
+- KPIs de cocheras y reservas.
+- Accesos rápidos a cocheras y usuarios.
+
+### Administrador — Cocheras
+- Listado completo de cocheras.
+- Estado activo/abierto.
+- Asignación de operador.
+
+### Administrador — Usuarios
+- Listado de usuarios.
+- Activación/desactivación de cuentas.
 
 ---
 
@@ -220,22 +257,23 @@ PENDING → CONFIRMED → ACTIVE → COMPLETED
     └→ NO_SHOW
 ```
 
-| Estado | Color | Icono | Descripción |
-|--------|-------|-------|-------------|
-| PENDING | Amarillo | ⏳ | Creada, esperando confirmación |
-| CONFIRMED | Azul | ✅ | Confirmada |
-| ACTIVE | Verde | 🅿️ | En curso |
-| COMPLETED | Gris | ☑️ | Finalizada |
-| CANCELLED | Rojo | ✕ | Cancelada |
-| NO_SHOW | Naranja | ⚠️ | No se presentó |
+| Estado | Descripción |
+|---|---|
+| `PENDING` | Creada, pendiente de confirmación |
+| `CONFIRMED` | Confirmada |
+| `ACTIVE` | Cliente dentro del estacionamiento |
+| `COMPLETED` | Reserva finalizada |
+| `CANCELLED` | Cancelada por el cliente o el sistema |
+| `NO_SHOW` | El cliente no se presentó |
 
 ---
 
-## Estados de espacios
+## Estados de espacio
 
-| Estado | Color | Descripción |
-|--------|-------|-------------|
-| AVAILABLE | Verde | Libre y disponible |
-| RESERVED | Azul | Con reserva futura |
-| OCCUPIED | Rojo | Ocupado en este momento |
-| MAINTENANCE | Gris | Fuera de servicio |
+| Estado | Descripción |
+|---|---|
+| `AVAILABLE` | Libre y disponible |
+| `RESERVED` | Con reserva futura |
+| `OCCUPIED` | Ocupado en este momento |
+| `MAINTENANCE` | Fuera de servicio temporalmente |
+| `INACTIVE` | Deshabilitado |

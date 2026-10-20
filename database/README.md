@@ -1,78 +1,76 @@
 # Parkeo — Base de Datos
 
-Documentación técnica del esquema de base de datos MySQL 8.0 para la plataforma de reservas de estacionamientos **Parkeo**.
+Documentación técnica del esquema MySQL 8.0 para la plataforma de reservas de estacionamientos **Parkeo**.
 
 ---
 
 ## Conexión
 
-| Parámetro | Valor         |
-|-----------|---------------|
-| Host      | localhost     |
-| Puerto    | 3306          |
-| Base      | `parkeo_db`   |
-| Charset   | utf8mb4       |
-| Collation | utf8mb4_unicode_ci |
+| Parámetro | Valor |
+|---|---|
+| Host | localhost |
+| Puerto | 3306 |
+| Base | `parkeo_db` |
+| Charset | `utf8mb4` |
+| Collation | `utf8mb4_unicode_ci` |
+| Usuario local | `antwny` |
+
+> Con Docker Compose el puerto expuesto es **3307** y el usuario es `parkeo_user`.
 
 ---
 
 ## Archivos
 
-| Archivo      | Descripción                                     |
-|--------------|-------------------------------------------------|
-| `schema.sql` | DDL completo: tablas, índices y restricciones   |
-| `data.sql`   | Datos de prueba (seed data)                     |
-| `README.md`  | Esta documentación                              |
+| Archivo | Descripción |
+|---|---|
+| `schema.sql` | DDL completo: tablas, índices y restricciones |
+| `data.sql` | Datos de prueba (seed data) |
+| `README.md` | Esta documentación |
+
+Los scripts SQL no contienen comentarios y están alineados con las entidades JPA del backend.
 
 ---
 
 ## Instalación
 
 ```bash
-# 1. Crear la base de datos (si no existe)
-mysql -u antwny -p198009 -e "CREATE DATABASE IF NOT EXISTS parkeo_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u antwny -p -e "DROP DATABASE IF EXISTS parkeo_db;"
+mysql -u antwny -p -e "CREATE DATABASE parkeo_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u antwny -p parkeo_db < schema.sql
+mysql -u antwny -p parkeo_db < data.sql
+mysql -u antwny -p parkeo_db -e "SHOW TABLES;"
+```
 
-# 2. Aplicar el schema
-mysql -u antwny -p198009 parkeo_db < schema.sql
+O desde la raíz del proyecto:
 
-# 3. Cargar los datos de prueba
-mysql -u antwny -p198009 parkeo_db < data.sql
-
-# 4. Verificar
-mysql -u antwny -p198009 parkeo_db -e "SHOW TABLES;"
+```bash
+bash scripts/reset-db.sh
 ```
 
 ---
 
-## Diagrama de Tablas
+## Diagrama de tablas
 
 ```
-roles ──────────────────────────────────────┐
-                                            │
-users ──────────────┬───────────────────────┘
-  │                 │
-  ├── refresh_tokens│
-  │                 │
-  ├── vehicles ─────┤── vehicle_types
-  │                 │
-  └── parking_lots ─┴── owner_id
-        │
-        ├── parking_lot_services ── parking_services
-        │
-        ├── parking_spaces ──── vehicle_types
-        │     └── space_status_history
-        │
-        ├── schedules
-        │
-        ├── tariffs ──────────── vehicle_types
-        │
-        └── operator_parking_assignments ── users (operador)
-
-reservations ── users · parking_spaces · vehicles
-  └── reservation_status_history
-  └── parking_ratings
-
-audit_log ── users
+roles ───< user_roles >─── users
+                              │
+                              ├──< refresh_tokens
+                              ├──< vehicles >─── vehicle_types
+                              ├──< parking_lots >─── operator_id (users)
+                              │        │
+                              │        ├──< parking_services
+                              │        ├──< parking_spaces >─── vehicle_types
+                              │        ├──< schedules
+                              │        ├──< tariffs >─── vehicle_types
+                              │        └──< operator_parking_assignments
+                              │
+                              ├──< reservations >─── parking_spaces
+                              │         │             vehicles
+                              │         │             parking_lots
+                              │         └──< parking_ratings
+                              │
+                              ├──< status_history
+                              └──< audit_log
 ```
 
 ---
@@ -80,173 +78,206 @@ audit_log ── users
 ## Tablas
 
 ### `roles`
-Roles del sistema.
 
 | Columna | Tipo | Descripción |
-|---------|------|-------------|
-| id | TINYINT PK | |
-| name | VARCHAR(50) UNIQUE | `CLIENTE`, `OPERADOR`, `ADMIN` |
-| label | VARCHAR(100) | Etiqueta legible |
-
----
+|---|---|---|
+| `id` | TINYINT UNSIGNED PK | |
+| `name` | VARCHAR(50) UNIQUE | `ROLE_USER`, `ROLE_OPERATOR`, `ROLE_ADMIN` |
+| `label` | VARCHAR(100) | Etiqueta legible |
 
 ### `users`
-Usuarios registrados en la plataforma.
 
 | Columna | Tipo | Descripción |
-|---------|------|-------------|
-| id | BIGINT PK AI | |
-| email | VARCHAR(255) UNIQUE | |
-| password_hash | VARCHAR(255) | bcrypt hash |
-| first_name | VARCHAR(100) | |
-| last_name | VARCHAR(100) | |
-| phone | VARCHAR(20) | |
-| avatar_url | VARCHAR(500) | |
-| is_active | BOOLEAN | Default: TRUE |
-| email_verified | BOOLEAN | Default: FALSE |
-| role_id | FK → roles.id | |
-| last_login | TIMESTAMP NULL | |
-| created_at / updated_at | TIMESTAMP | |
+|---|---|---|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `email` | VARCHAR(150) UNIQUE | |
+| `password_hash` | VARCHAR(255) | Hash BCrypt |
+| `first_name`, `last_name` | VARCHAR(100) | |
+| `phone` | VARCHAR(20) | |
+| `document_number` | VARCHAR(20) | |
+| `avatar_url` | VARCHAR(500) | |
+| `is_active` | BOOLEAN | Default `TRUE` |
+| `email_verified` | BOOLEAN | Default `FALSE` |
+| `last_login_at` | DATETIME(6) | |
+| `created_at`, `updated_at` | DATETIME(6) | |
 
-**Índices:** `uq_users_email`, `idx_users_role`, `idx_users_active`
+Índices: `uq_users_email`, `idx_users_phone`, `idx_users_active`.
 
----
+### `user_roles`
+
+| Columna | Tipo |
+|---|---|
+| `user_id` | BIGINT UNSIGNED FK → `users.id` |
+| `role_id` | TINYINT UNSIGNED FK → `roles.id` |
+
+PK compuesta: `(user_id, role_id)`.
 
 ### `refresh_tokens`
-Tokens de refresco para autenticación JWT.
 
 | Columna | Tipo | Descripción |
-|---------|------|-------------|
-| id | BIGINT PK AI | |
-| user_id | FK → users.id | CASCADE DELETE |
-| token | VARCHAR(500) UNIQUE | Token opaco |
-| expires_at | TIMESTAMP | Expiración |
-| is_revoked | BOOLEAN | |
-| user_agent | VARCHAR(500) | |
-| ip_address | VARCHAR(45) | IPv4/IPv6 |
-
----
+|---|---|---|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `user_id` | BIGINT UNSIGNED FK → `users.id` | CASCADE |
+| `token` | VARCHAR(500) UNIQUE | Token opaco |
+| `expires_at` | TIMESTAMP | Expiración |
+| `is_revoked` | BOOLEAN | |
+| `user_agent` | VARCHAR(500) | |
+| `ip_address` | VARCHAR(45) | IPv4/IPv6 |
+| `created_at` | TIMESTAMP | |
 
 ### `vehicle_types`
-Catálogo de tipos de vehículo.
 
 | Nombre | Etiqueta |
-|--------|----------|
-| AUTOMOVIL | Automóvil |
-| MOTO | Motocicleta |
-| CAMIONETA | Camioneta/SUV |
-| CAMION | Camión |
-| BICICLETA | Bicicleta |
-
----
+|---|---|
+| `AUTOMOVIL` | Automóvil |
+| `MOTO` | Motocicleta |
+| `CAMIONETA` | Camioneta/SUV |
+| `CAMION` | Camión |
+| `BICICLETA` | Bicicleta |
 
 ### `vehicles`
-Vehículos registrados por los usuarios.
 
 | Columna | Tipo | Descripción |
-|---------|------|-------------|
-| plate | VARCHAR(20) UNIQUE | Placa del vehículo |
-| brand / model / color / year | | Datos del vehículo |
-| is_active | BOOLEAN | |
-
----
+|---|---|---|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `user_id` | FK → `users.id` | |
+| `vehicle_type_id` | FK → `vehicle_types.id` | |
+| `license_plate` | VARCHAR(20) UNIQUE | Placa del vehículo |
+| `brand`, `model`, `color`, `year` | | Datos del vehículo |
+| `is_active` | BOOLEAN | |
 
 ### `parking_lots`
-Estacionamientos disponibles en la plataforma.
 
 | Columna | Tipo | Descripción |
-|---------|------|-------------|
-| owner_id | FK → users.id | Propietario/admin |
-| latitude / longitude | DECIMAL | Coordenadas GPS |
-| total_capacity | INT | Espacios totales |
-| is_active | BOOLEAN | Visible en la app |
-| is_open | BOOLEAN | Abierto en este momento |
+|---|---|---|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `operator_id` | FK → `users.id` (NULL) | Operador asignado |
+| `name`, `description`, `address` | | Datos del estacionamiento |
+| `district`, `city`, `country` | | Ubicación administrativa |
+| `latitude`, `longitude` | DECIMAL | Coordenadas GPS |
+| `phone`, `email`, `image_url` | | Contacto e imagen |
+| `total_spaces` | INT | Espacios totales |
+| `available_spaces` | INT | Espacios disponibles |
+| `is_active` | BOOLEAN | Visible en la app |
+| `is_open` | BOOLEAN | Abierto en este momento |
+| `created_at`, `updated_at` | TIMESTAMP | |
 
-**Índices:** `idx_parking_lots_location`, `idx_parking_lots_active_open`, `idx_parking_lots_district`
-
----
+Índices: `idx_parking_lots_location`, `idx_parking_lots_active_open`, `idx_parking_lots_district`, `idx_parking_lots_operator`.
 
 ### `parking_services`
-Catálogo de servicios (10 servicios disponibles):
 
-`TECHADO`, `SEGURIDAD_24H`, `CAMARA_CCTV`, `LAVADO`, `CARGADOR_ELECTRICO`, `DISCAPACITADOS`, `WIFI`, `BICICLETAS`, `MOTOS`, `VALET`
+| Columna | Tipo |
+|---|---|
+| `id` | BIGINT UNSIGNED PK AI |
+| `parking_lot_id` | FK → `parking_lots.id` (CASCADE) |
+| `name` | VARCHAR(100) |
+| `description` | VARCHAR(255) |
+| `icon` | VARCHAR(100) |
 
----
+Servicios usados: `TECHADO`, `SEGURIDAD_24H`, `CAMARA_CCTV`, `DISCAPACITADOS`, `WIFI`, `VALET`, `BICICLETAS`, `MOTOS`, `LAVADO`, `CARGADOR_ELECTRICO`.
 
 ### `parking_spaces`
-Espacios individuales dentro de cada estacionamiento.
 
 | Columna | Tipo | Descripción |
-|---------|------|-------------|
-| space_number | VARCHAR(20) | Ej: `A-01`, `M-05` |
-| status | ENUM | `AVAILABLE`, `OCCUPIED`, `RESERVED`, `MAINTENANCE` |
-| floor_level | TINYINT | Nivel/piso |
-| is_covered | BOOLEAN | Techado |
+|---|---|---|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `parking_lot_id` | FK → `parking_lots.id` | CASCADE |
+| `vehicle_type_id` | FK → `vehicle_types.id` | |
+| `space_number` | VARCHAR(20) | Ej: `A-01`, `M-05` |
+| `floor` | VARCHAR(10) | Nivel/piso |
+| `section` | VARCHAR(20) | Zona/sección |
+| `status` | ENUM | `AVAILABLE`, `OCCUPIED`, `RESERVED`, `MAINTENANCE`, `INACTIVE` |
+| `is_covered` | BOOLEAN | Techado |
+| `has_charging` | BOOLEAN | Punto de carga |
+| `is_accessible` | BOOLEAN | Accesible |
+| `notes` | VARCHAR(255) | |
 
-**Restricción única:** `(parking_lot_id, space_number)`
-
----
+Restricción única: `(parking_lot_id, space_number)`.
 
 ### `schedules`
-Horarios de apertura por día de semana.
 
-- Restricción única: `(parking_lot_id, day_of_week)`
-- Si `is_open = FALSE`, los campos `open_time` / `close_time` pueden ser NULL
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `parking_lot_id` | FK → `parking_lots.id` | CASCADE |
+| `day_of_week` | ENUM | `MONDAY` … `SUNDAY` |
+| `open_time` | VARCHAR(8) | Ej. `07:00:00` |
+| `close_time` | VARCHAR(8) | Ej. `23:00:00` |
+| `is_closed` | BOOLEAN | Día cerrado |
 
----
+Restricción única: `(parking_lot_id, day_of_week)`.
 
 ### `tariffs`
-Tarifas en **soles peruanos (S/)**.
 
-| Tipo | Descripción |
-|------|-------------|
-| HOURLY | Por hora |
-| DAILY | Por día |
-| MONTHLY | Por mes |
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `parking_lot_id` | FK → `parking_lots.id` | CASCADE |
+| `vehicle_type_id` | FK → `vehicle_types.id` | |
+| `tariff_type` | ENUM | `HOURLY`, `DAILY`, `WEEKLY`, `MONTHLY`, `FIXED` |
+| `price` | DECIMAL(10,2) | Soles peruanos |
+| `min_hours` | INT | Horas mínimas |
+| `max_hours` | INT | Horas máximas |
+| `is_active` | BOOLEAN | |
 
-Restricción única: `(parking_lot_id, vehicle_type_id, tariff_type)`
-
----
+Restricción única: `(parking_lot_id, vehicle_type_id, tariff_type)`.
 
 ### `reservations`
-Reservas de espacios de estacionamiento.
 
-| Estado | Descripción |
-|--------|-------------|
-| PENDING | Creada, pendiente de confirmación |
-| CONFIRMED | Confirmada por el sistema/operador |
-| ACTIVE | Cliente dentro del estacionamiento |
-| COMPLETED | Reserva finalizada exitosamente |
-| CANCELLED | Cancelada por usuario o sistema |
-| NO_SHOW | No se presentó |
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | BIGINT UNSIGNED PK AI | |
+| `user_id` | FK → `users.id` | |
+| `parking_space_id` | FK → `parking_spaces.id` | |
+| `vehicle_id` | FK → `vehicles.id` | |
+| `parking_lot_id` | FK → `parking_lots.id` | |
+| `start_time`, `end_time` | DATETIME | Rango de la reserva |
+| `status` | ENUM | `PENDING`, `CONFIRMED`, `ACTIVE`, `COMPLETED`, `CANCELLED`, `NO_SHOW` |
+| `total_amount` | DECIMAL(10,2) | Monto calculado |
+| `currency` | VARCHAR(5) | Default `PEN` |
+| `confirmation_code` | VARCHAR(20) UNIQUE | Ej. `PKO-DEMO01` |
+| `notes` | VARCHAR(500) | |
+| `cancelled_at`, `cancellation_reason` | | Cancelación |
+| `checked_in_at`, `checked_out_at` | | Check-in / check-out |
+| `created_at`, `updated_at` | TIMESTAMP | |
 
-**Constraint:** `end_time > start_time`
+Índices: `idx_user_reservations`, `idx_space_time`, `idx_status_time`, `idx_reservations_parking`.
 
----
+### `status_history`
+
+Historial unificado de cambios de estado para espacios y reservas.
+
+| Columna | Tipo |
+|---|---|
+| `entity_type` | ENUM(`SPACE`, `RESERVATION`) |
+| `entity_id` | BIGINT UNSIGNED |
+| `previous_status` | VARCHAR(50) |
+| `new_status` | VARCHAR(50) |
+| `changed_by` | FK → `users.id` |
+| `notes` | VARCHAR(500) |
+| `changed_at` | TIMESTAMP |
 
 ### `parking_ratings`
+
 Calificaciones de 1 a 5 estrellas por reserva completada. Una calificación por reserva (`UNIQUE reservation_id`).
 
----
-
 ### `audit_log`
-Registro de auditoría. Almacena valores JSON de cambios (`old_values`, `new_values`).
 
----
+Registro de auditoría con valores JSON de cambios (`old_values`, `new_values`). El backend actual todavía no escribe auditoría automáticamente.
 
 ### `operator_parking_assignments`
-Asignación de operadores a estacionamientos específicos.
+
+Asignación de operadores a estacionamientos específicos. Restricción única: `(operator_id, parking_lot_id)`.
 
 ---
 
-## Datos de Prueba
+## Datos de prueba
 
 ### Usuarios
 
 | Email | Contraseña | Rol |
-|-------|-----------|-----|
+|---|---|---|
 | admin@parkeo.pe | Password123! | ADMIN |
 | operador@parkeo.pe | Password123! | OPERADOR |
+| operador2@parkeo.pe | Password123! | OPERADOR |
 | cliente@parkeo.pe | Password123! | CLIENTE |
 | juan.perez@parkeo.pe | Password123! | CLIENTE |
 | sofia.mendez@parkeo.pe | Password123! | CLIENTE |
@@ -255,7 +286,7 @@ Asignación de operadores a estacionamientos específicos.
 ### Estacionamientos
 
 | # | Nombre | Distrito | Capacidad |
-|---|--------|----------|-----------|
+|---|---|---|---|
 | 1 | Parkeo Miraflores Centro | Miraflores | 60 |
 | 2 | Parkeo San Isidro Financiero | San Isidro | 80 |
 | 3 | Parkeo Surco Chacarilla | Santiago de Surco | 100 |
@@ -263,50 +294,73 @@ Asignación de operadores a estacionamientos específicos.
 | 5 | Parkeo Lince Express | Lince | 45 |
 | 6 | Parkeo San Borja Premium | San Borja | 90 |
 
+Totales: **410 espacios, 42 horarios, 54 tarifas, 6 reservas y 7 usuarios**.
+
 ### Tarifas por hora (S/)
 
 | Distrito | Auto | Moto | Camioneta |
-|----------|------|------|-----------|
+|---|---|---|---|
 | Miraflores | S/5.00 | S/2.00 | S/7.00 |
 | San Isidro | S/8.00 | S/3.00 | S/10.00 |
 | Surco | S/6.00 | S/2.50 | S/8.00 |
-| Barranco | S/4.00 | S/1.50 | — |
+| Barranco | S/4.00 | S/1.50 | S/6.00 |
 | Lince | S/3.00 | S/1.50 | S/5.00 |
 | San Borja | S/7.00 | S/2.50 | S/9.00 |
 
 ---
 
-## Consultas Útiles
+## Consultas útiles
+
+### Estacionamientos activos con disponibilidad
 
 ```sql
--- Estacionamientos activos con disponibilidad
 SELECT pl.name, pl.district,
+       pl.total_spaces,
+       pl.available_spaces
+FROM parking_lots pl
+WHERE pl.is_active = TRUE
+ORDER BY pl.name;
+```
+
+### Disponibilidad calculada desde los espacios
+
+```sql
+SELECT pl.name,
        COUNT(ps.id) AS total_espacios,
        SUM(ps.status = 'AVAILABLE') AS disponibles
 FROM parking_lots pl
 JOIN parking_spaces ps ON ps.parking_lot_id = pl.id
 WHERE pl.is_active = TRUE
 GROUP BY pl.id;
+```
 
--- Tarifas por hora de todos los estacionamientos
+### Tarifas por hora
+
+```sql
 SELECT pl.name, vt.label AS vehiculo, t.price AS precio_hora
 FROM tariffs t
 JOIN parking_lots pl   ON pl.id = t.parking_lot_id
 JOIN vehicle_types vt  ON vt.id = t.vehicle_type_id
 WHERE t.tariff_type = 'HOURLY' AND t.is_active = TRUE
 ORDER BY pl.district, vt.name;
+```
 
--- Reservas activas con detalle
-SELECT r.id, u.email, pl.name AS estacionamiento,
-       ps.space_number, v.plate, r.start_time, r.end_time, r.total_price
+### Reservas activas con detalle
+
+```sql
+SELECT r.id, r.confirmation_code, u.email, pl.name AS estacionamiento,
+       ps.space_number, v.license_plate, r.start_time, r.end_time, r.total_amount
 FROM reservations r
 JOIN users u           ON u.id = r.user_id
 JOIN parking_spaces ps ON ps.id = r.parking_space_id
-JOIN parking_lots pl   ON pl.id = ps.parking_lot_id
+JOIN parking_lots pl   ON pl.id = r.parking_lot_id
 JOIN vehicles v        ON v.id = r.vehicle_id
-WHERE r.status IN ('CONFIRMED','ACTIVE');
+WHERE r.status IN ('CONFIRMED', 'ACTIVE');
+```
 
--- Rating promedio por estacionamiento
+### Rating promedio por estacionamiento
+
+```sql
 SELECT pl.name, pl.district,
        ROUND(AVG(pr.rating), 2) AS rating_promedio,
        COUNT(pr.id) AS total_ratings

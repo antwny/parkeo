@@ -2,13 +2,13 @@
 
 > **Encuentra, reserva y gestiona tu estacionamiento — en tiempo real.**
 
-PARKeo es una aplicación móvil Android (con backend en Spring Boot) que conecta a conductores con estacionamientos disponibles en Lima, Perú. Permite consultar disponibilidad en tiempo real, hacer reservas, gestionar vehículos y navegar hasta el estacionamiento elegido — todo desde el smartphone.
+PARKeo es una aplicación móvil Android con backend Spring Boot que conecta a conductores con estacionamientos disponibles en Lima, Perú. Permite consultar disponibilidad, reservar espacios, gestionar vehículos, mostrar un boarding pass con código QR y operar la cochera desde paneles para operadores y administradores.
 
 ---
 
 ## ¿Qué problema resuelve?
 
-Encontrar estacionamiento en ciudades congestionadas es frustrante, ineficiente y costoso en tiempo. PARKeo digitaliza la operación de estacionamientos y empodera al conductor con información en tiempo real sobre disponibilidad, precios y ubicación.
+Encontrar estacionamiento en ciudades congestionadas es frustrante, ineficiente y costoso en tiempo. PARKeo digitaliza la operación de estacionamientos y entrega al conductor información en tiempo real sobre disponibilidad, precios y ubicación.
 
 ---
 
@@ -16,14 +16,17 @@ Encontrar estacionamiento en ciudades congestionadas es frustrante, ineficiente 
 
 | Característica | Descripción |
 |---|---|
-| 🗺️ Mapa interactivo | Mapa centrado en ubicación actual con marcadores de estacionamientos |
-| 🅿️ Disponibilidad en tiempo real | Consulta espacios disponibles antes de ir |
-| 📅 Reservas | Reserva un espacio con fecha, hora y duración |
-| 🚗 Gestión de vehículos | Administra múltiples vehículos |
-| 👤 Perfiles de usuario | Cliente, Operador, Administrador |
-| 🔒 Seguridad | JWT + BCrypt + RBAC |
-| 🌙 Dark/Light Mode | Soporte completo de tema oscuro y claro |
-| 📍 Geolocalización | Permisos en tiempo de ejecución, manejo de errores |
+| Mapa interactivo | Google Maps con marcadores de estacionamientos y ubicación actual |
+| Disponibilidad en tiempo real | Espacios libres por estacionamiento y tipo de vehículo |
+| Reservas | Creación con fecha, hora, duración y cálculo de precio en servidor |
+| Boarding pass QR | Código QR generado en la app a partir del código de confirmación |
+| Recordatorios | Notificaciones locales de inicio y fin de reserva con WorkManager |
+| Gestión de vehículos | Registro, edición y eliminación de vehículos del cliente |
+| Panel de operador | Control de espacios y ciclo de reservas (check-in / check-out) |
+| Panel de administrador | Métricas globales, cocheras, asignación de operador y usuarios |
+| Seguridad | JWT + BCrypt + RBAC con roles `ROLE_USER`, `ROLE_OPERATOR`, `ROLE_ADMIN` |
+| Dark/Light Mode | Tema claro y oscuro completo |
+| Geolocalización | Permisos en tiempo de ejecución y búsqueda por proximidad |
 
 ---
 
@@ -32,10 +35,10 @@ Encontrar estacionamiento en ciudades congestionadas es frustrante, ineficiente 
 ```
 ┌─────────────────────────────────────────────┐
 │            Android App (Kotlin)             │
-│  Compose UI → ViewModel → UseCase →         │
-│  Repository → Retrofit → REST API           │
+│  Compose UI → ViewModel → Repository →      │
+│  Retrofit → REST API                        │
 └────────────────────┬────────────────────────┘
-                     │ HTTPS / REST
+                     │ HTTP/REST + JWT
 ┌────────────────────▼────────────────────────┐
 │         Spring Boot Backend (Java 21)       │
 │  Controller → Service → Repository →        │
@@ -53,31 +56,32 @@ Encontrar estacionamiento en ciudades congestionadas es frustrante, ineficiente 
 ## Stack tecnológico
 
 ### Android
-- **Kotlin** + Jetpack Compose
-- Material 3
+- **Kotlin** + Jetpack Compose + Material 3
 - Navigation Compose
-- ViewModel + StateFlow
-- Retrofit + OkHttp
-- Kotlin Serialization
-- Google Maps SDK for Android
+- ViewModel + StateFlow + Coroutines
+- Retrofit + OkHttp + Kotlin Serialization
+- Google Maps SDK / Maps Compose
 - Android Location Services
 - DataStore (sesión local)
-- Coroutines
+- WorkManager (recordatorios de reservas)
+- Inyección de dependencias manual mediante `AppContainer`
 
 ### Backend
 - **Java 21** + Spring Boot 3.3.x
 - Spring Security + JWT (JJWT 0.12)
-- BCrypt
+- BCrypt (factor 12)
 - Spring Data JPA + Hibernate
 - MySQL Driver
 - Bean Validation
 - SpringDoc OpenAPI (Swagger)
 - Maven
+- JUnit 5 + Mockito
 
 ### Base de datos
 - **MySQL 8.0**
 - Modelo relacional normalizado
-- Índices para geolocalización y disponibilidad
+- Índices para geolocalización, disponibilidad y reservas
+- `schema.sql` y `data.sql` alineados con las entidades JPA
 
 ---
 
@@ -99,9 +103,11 @@ Parkeo/
 │   ├── flujos.md
 │   └── instalacion.md
 ├── scripts/
-│   ├── setup.sh       # Configuración inicial
+│   ├── setup.sh
 │   ├── start-backend.sh
-│   └── reset-db.sh
+│   ├── reset-db.sh
+│   ├── demo_flow.sh
+│   └── levantar-celular.sh
 ├── .gitignore
 ├── docker-compose.yml
 └── README.md
@@ -117,8 +123,10 @@ Parkeo/
 | Maven | 3.9+ | `mvn --version` |
 | MySQL | 8.0 | `mysql --version` |
 | Android Studio | Ladybug+ | IDE |
-| Android SDK | API 34 | Android Studio |
+| Android SDK | API 35 | Android Studio |
 | Git | 2.x | `git --version` |
+
+La app Android tiene `minSdk 26`, `targetSdk 35` y `compileSdk 35`.
 
 ---
 
@@ -127,19 +135,26 @@ Parkeo/
 ### 1. Clonar / ubicar el proyecto
 
 ```bash
-ls ~/Documentos/Parkeo/
+cd ~/Documentos/parkeo
 ```
 
-### 2. Configurar base de datos
+### 2. Configurar la base de datos
 
 ```bash
-cd ~/Documentos/Parkeo
 bash scripts/setup.sh
 ```
 
-Esto creará la base de datos `parkeo_db`, aplicará el schema y cargará los datos de prueba.
+Esto crea `parkeo_db`, aplica `database/schema.sql` y carga `database/data.sql`.
 
-**Credenciales de desarrollo (solo para desarrollo local):**
+Para reiniciar la base desde cero:
+
+```bash
+bash scripts/reset-db.sh
+```
+
+> Si el backend estaba corriendo durante el reset, reinícialo para que Hibernate vuelva a validar la conexión y el esquema.
+
+**Credenciales de desarrollo local:**
 
 ```
 Host: localhost
@@ -160,6 +175,7 @@ export JWT_SECRET="tu-clave-secreta-minimo-256-bits"
 ```
 
 O usa el script:
+
 ```bash
 bash scripts/start-backend.sh
 ```
@@ -167,11 +183,12 @@ bash scripts/start-backend.sh
 ### 4. Configurar Google Maps API Key
 
 1. Obtén una API Key en [Google Cloud Console](https://console.cloud.google.com/)
-2. Habilita: **Maps SDK for Android** y **Geocoding API**
-3. Agrega la clave a `android/local.properties`:
+2. Habilita **Maps SDK for Android**
+3. Agrega la clave en `android/local.properties`:
 
 ```properties
 MAPS_API_KEY=AIza...tu_clave_aqui
+BACKEND_URL=http://10.0.2.2:8080/
 ```
 
 > ⚠️ `local.properties` está en `.gitignore` y nunca se sube al repositorio.
@@ -183,18 +200,19 @@ MAPS_API_KEY=AIza...tu_clave_aqui
 ### Backend
 
 ```bash
-cd ~/Documentos/Parkeo
+cd ~/Documentos/parkeo
 bash scripts/start-backend.sh
 ```
 
-Backend disponible en: `http://localhost:8080`
-Swagger UI: `http://localhost:8080/swagger-ui.html`
+- API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/api-docs`
 
 ### Android
 
 1. Abre Android Studio
-2. File → Open → `~/Documentos/Parkeo/android/`
-3. Configura `local.properties` con tu Google Maps API Key
+2. File → Open → `~/Documentos/parkeo/android/`
+3. Configura `local.properties` con `MAPS_API_KEY` y `BACKEND_URL`
 4. Run → Run 'app'
 
 ---
@@ -202,33 +220,49 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
 ## API REST — Endpoints principales
 
 ```
-POST   /api/auth/register       Registrar usuario
-POST   /api/auth/login          Iniciar sesión
-POST   /api/auth/refresh        Renovar token
-POST   /api/auth/logout         Cerrar sesión
+POST   /api/auth/register        Registro de cliente
+POST   /api/auth/login           Inicio de sesión
+POST   /api/auth/refresh         Renovar tokens
+POST   /api/auth/logout          Cerrar sesión
 
-GET    /api/users/me            Perfil del usuario
-PUT    /api/users/me            Actualizar perfil
+GET    /api/users/me             Perfil del usuario
+PUT    /api/users/me             Actualizar perfil
+PATCH  /api/users/me/password    Cambiar contraseña
 
-GET    /api/vehicles            Mis vehículos
-POST   /api/vehicles            Agregar vehículo
-PUT    /api/vehicles/{id}       Actualizar vehículo
-DELETE /api/vehicles/{id}       Eliminar vehículo
+GET    /api/vehicles             Mis vehículos
+POST   /api/vehicles             Agregar vehículo
+PUT    /api/vehicles/{id}        Actualizar vehículo
+DELETE /api/vehicles/{id}        Eliminar vehículo
+GET    /api/vehicles/types       Catálogo de tipos
 
-GET    /api/parking             Todos los estacionamientos
-GET    /api/parking/{id}        Detalle del estacionamiento
-GET    /api/parking/nearby      Cercanos por coordenadas
-GET    /api/parking/search      Buscar por nombre/dirección
-GET    /api/parking/{id}/availability  Disponibilidad
+GET    /api/parking              Estacionamientos activos (paginado)
+GET    /api/parking/{id}         Detalle del estacionamiento
+GET    /api/parking/nearby       Cercanos por coordenadas
+GET    /api/parking/search       Buscar por nombre/dirección
+GET    /api/parking/{id}/schedules
+GET    /api/parking/{id}/tariffs
+GET    /api/parking/{id}/availability
+POST   /api/v1/availability/check
 
-GET    /api/reservations        Mis reservas
-POST   /api/reservations        Crear reserva
-GET    /api/reservations/{id}   Detalle de reserva
-PATCH  /api/reservations/{id}/cancel  Cancelar
+GET    /api/reservations         Mis reservas
+POST   /api/reservations         Crear reserva
+GET    /api/reservations/{id}    Detalle de reserva
+PATCH  /api/reservations/{id}/cancel
 
-GET    /api/admin/users         [ADMIN] Usuarios
-GET    /api/admin/statistics    [ADMIN] Estadísticas
-GET    /api/operator/parking-lots [OPERADOR] Mis estacionamientos
+GET    /api/operator/parking-lots            [OPERADOR/ADMIN]
+GET    /api/operator/parking-lots/{id}/spaces
+PATCH  /api/operator/spaces/{id}/status
+GET    /api/operator/reservations
+PATCH  /api/operator/reservations/{id}/check-in
+PATCH  /api/operator/reservations/{id}/check-out
+
+GET    /api/admin/users                      [ADMIN]
+PUT    /api/admin/users/{id}/status
+GET    /api/admin/parking-lots
+PUT    /api/admin/parking-lots/{id}/status
+PUT    /api/admin/parking-lots/{id}/operator
+DELETE /api/admin/parking-lots/{id}
+GET    /api/admin/statistics
 ```
 
 Documentación completa: `http://localhost:8080/swagger-ui.html`
@@ -237,12 +271,12 @@ Documentación completa: `http://localhost:8080/swagger-ui.html`
 
 ## Seguridad
 
-- **Autenticación**: JWT Bearer Token (expira en 24h)
+- **Autenticación**: JWT Bearer Token (24 h por defecto)
 - **Refresh Token**: 7 días, almacenado en BD, revocable
-- **Contraseñas**: BCrypt (factor 10)
-- **Roles**: CLIENTE, OPERADOR, ADMIN
-- **Autorización**: basada en roles por endpoint
-- **Acceso horizontal**: validado a nivel de servicio
+- **Contraseñas**: BCrypt con factor 12
+- **Roles**: `ROLE_USER`, `ROLE_OPERATOR`, `ROLE_ADMIN`
+- **Autorización**: por endpoint con `@PreAuthorize` y reglas de Spring Security
+- **Acceso horizontal**: validado en la capa de servicio
 - **Secretos**: variables de entorno, nunca en código
 
 ---
@@ -255,8 +289,23 @@ Documentación completa: `http://localhost:8080/swagger-ui.html`
 |---|---|---|
 | admin@parkeo.pe | Password123! | ADMIN |
 | operador@parkeo.pe | Password123! | OPERADOR |
+| operador2@parkeo.pe | Password123! | OPERADOR |
 | cliente@parkeo.pe | Password123! | CLIENTE |
 | juan.perez@parkeo.pe | Password123! | CLIENTE |
+| sofia.mendez@parkeo.pe | Password123! | CLIENTE |
+| roberto.silva@parkeo.pe | Password123! | CLIENTE |
+
+---
+
+## Datos de prueba
+
+- 6 estacionamientos en Lima (Miraflores, San Isidro, Surco, Barranco, Lince y San Borja).
+- 410 espacios distribuidos entre los 6 estacionamientos.
+- 42 horarios semanales (una fila por día y estacionamiento).
+- 54 tarifas (por hora, diaria y mensual por tipo de vehículo).
+- 6 reservas de ejemplo en distintos estados.
+- 2 calificaciones y 8 registros de auditoría.
+- `available_spaces` se calcula a partir del estado real de los espacios.
 
 ---
 
@@ -265,13 +314,14 @@ Documentación completa: `http://localhost:8080/swagger-ui.html`
 La aplicación requiere una API Key de Google Maps SDK for Android.
 
 Configura en `android/local.properties`:
+
 ```properties
 MAPS_API_KEY=TU_API_KEY
+BACKEND_URL=http://10.0.2.2:8080/
 ```
 
 APIs requeridas:
 - Maps SDK for Android
-- (Opcional) Geocoding API para búsqueda por texto
 
 ---
 
@@ -288,11 +338,14 @@ APIs requeridas:
 | Android — Mapa | ✅ Completo (requiere API Key) |
 | Android — Estacionamientos | ✅ Completo |
 | Android — Vehículos | ✅ Completo |
-| Android — Reservas | ✅ Completo |
-| Android — Perfil | ✅ Completo |
+| Android — Reservas + QR | ✅ Completo |
+| Android — Panel Operador | ✅ Completo |
+| Android — Panel Administrador | ✅ Completo |
+| Recordatorios locales | ✅ Completo |
 | Dark/Light Mode | ✅ Completo |
 | Datos de prueba | ✅ Completo |
-| Documentación | ✅ Completo |
+| Pruebas backend | ✅ JUnit/Mockito |
+| Documentación | ✅ Actualizada |
 
 ---
 
