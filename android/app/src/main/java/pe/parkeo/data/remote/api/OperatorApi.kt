@@ -36,4 +36,14 @@ interface OperatorApi {
     suspend fun checkOutReservation(
         @Path("id") id: Long
     ): Response<ApiResponseDto<ReservationDto>>
+
+    @GET("api/operator/reservations/by-code/{code}")
+    suspend fun getReservationByCode(
+        @Path("code") code: String
+    ): Response<ApiResponseDto<ReservationDto>>
+
+    @POST("api/operator/walk-ins")
+    suspend fun createWalkIn(
+        @Body request: CreateWalkInRequestDto
+    ): Response<ApiResponseDto<ReservationDto>>
 }

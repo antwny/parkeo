@@ -32,7 +32,21 @@ interface AdminApi {
     ): Response<ApiResponseDto<Unit>>
 
     @GET("api/admin/users")
-    suspend fun getUsers(): Response<ApiResponseDto<List<UserDto>>>
+    suspend fun getUsers(
+        @Query("search") search: String? = null,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 100
+    ): Response<ApiResponseDto<PageDto<UserDto>>>
+
+    @GET("api/admin/reservations")
+    suspend fun getReservations(
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 50
+    ): Response<ApiResponseDto<PageDto<ReservationDto>>>
+
+    @GET("api/admin/reservations/{id}")
+    suspend fun getReservationDetail(@Path("id") id: Long): Response<ApiResponseDto<ReservationDto>>
 
     @PUT("api/admin/users/{id}/status")
     suspend fun updateUserStatus(

@@ -10,4 +10,10 @@ interface ParkingRepository {
     suspend fun searchParkingLots(query: String): Result<List<ParkingLotDto>>
     suspend fun getAvailability(id: Long, date: String?): Result<AvailabilityDto>
     suspend fun getAvailableSpaces(id: Long, startTime: String, endTime: String, vehicleTypeId: Long?): Result<List<ParkingSpaceDto>>
+    suspend fun checkAvailability(
+        parkingLotId: Long,
+        vehicleTypeId: Long,
+        startTime: String,
+        endTime: String
+    ): Result<AvailabilityCheckResponseDto>
 }

@@ -38,6 +38,7 @@ fun MainScreen(
     vehicleViewModel: VehicleViewModel,
     onNavigateToParkingDetail: (Long) -> Unit,
     onNavigateToReservationCreate: (Long) -> Unit,
+    onNavigateToAdminReservations: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val userProfile by authViewModel.userProfile.collectAsState()
@@ -118,7 +119,8 @@ fun MainScreen(
                         0 -> AdminDashboardScreen(
                             viewModel = adminViewModel,
                             onNavigateToParkingLots = { selectedIndex = 1 },
-                            onNavigateToUsers = { selectedIndex = 2 }
+                            onNavigateToUsers = { selectedIndex = 2 },
+                            onNavigateToReservations = onNavigateToAdminReservations
                         )
                         1 -> AdminParkingLotsScreen(
                             viewModel = adminViewModel,
@@ -133,7 +135,7 @@ fun MainScreen(
                             viewModel = homeViewModel,
                             onNavigateToParkingDetail = onNavigateToParkingDetail,
                             onNavigateToProfile = { selectedIndex = 4 },
-                            onNavigateToReservations = { selectedIndex = 0 }
+                            onNavigateToReservations = onNavigateToAdminReservations
                         )
                         4 -> ProfileScreen(
                             viewModel = authViewModel,
@@ -142,6 +144,7 @@ fun MainScreen(
                             onNavigateToParkingLots = { selectedIndex = 1 },
                             onNavigateToUsers = { selectedIndex = 2 },
                             onNavigateToExplore = { selectedIndex = 3 },
+                            onNavigateToAdminReservations = onNavigateToAdminReservations,
                             onLogout = onLogout
                         )
                     }

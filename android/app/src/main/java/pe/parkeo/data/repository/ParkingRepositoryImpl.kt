@@ -64,6 +64,36 @@ class ParkingRepositoryImpl(
         } else throw Exception(response.body()?.message ?: "Error")
     }
 
+    override suspend fun checkAvailability(
+        parkingLotId: Long,
+        vehicleTypeId: Long,
+        startTime: String,
+        endTime: String
+    ): Result<AvailabilityCheckResponseDto> {
+        return try {
+            val response = parkingApi.checkAvailability(
+                CheckAvailabilityRequestDto(parkingLotId, vehicleTypeId, startTime, endTime)
+            )
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.Success(response.body()!!.data ?: throw Exception("Respuesta vacía del servidor"))
+            } else {
+                val serverMessage = response.body()?.message
+                val raw = try { response.errorBody()?.string() } catch (e: Exception) { null }
+                val parsed = raw?.let { body ->
+                    try {
+                        kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                            .parseToJsonElement(body)
+                            .let { (it as? kotlinx.serialization.json.JsonObject)?.get("message") }
+                            ?.let { m -> (m as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                    } catch (e: Exception) { null }
+                }
+                Result.Error(parsed ?: serverMessage?.takeIf { it.isNotBlank() } ?: "No se pudo verificar la disponibilidad")
+            }
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Error de conexión")
+        }
+    }
+
     private suspend fun <T> safeApiCall(apiCall: suspend () -> T): Result<T> {
         return try {
             Result.Success(apiCall())

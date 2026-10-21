@@ -19,4 +19,6 @@ interface ReservationRepository {
     ): Result<ReservationDto>
 
     suspend fun cancelReservation(id: Long, reason: String? = null): Result<ReservationDto>
+
+    suspend fun rateReservation(id: Long, rating: Int, comment: String? = null): Result<Unit>
 }

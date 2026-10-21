@@ -15,6 +15,8 @@ object NavRoutes {
     const val VEHICLES = "vehicles"
     const val PROFILE = "profile"
 
+    const val ADMIN_RESERVATIONS = "admin/reservations"
+
     fun parkingDetail(id: Long) = "parking/$id"
     fun reservationCreate(parkingId: Long) = "reservation/create/$parkingId"
 }

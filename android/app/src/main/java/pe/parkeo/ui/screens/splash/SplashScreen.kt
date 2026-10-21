@@ -47,7 +47,7 @@ fun SplashScreen(
 
     LaunchedEffect(isLoggedIn, onboardingShown) {
         if (isLoggedIn != null && onboardingShown != null) {
-            delay(1800)
+            delay(650) // apenas lo suficiente para completar la animación de del logo
             if (isLoggedIn == true) {
                 onNavigateToHome()
             } else {

@@ -44,11 +44,18 @@ class AdminRepositoryImpl(
         } else throw Exception(response.body()?.message ?: "Error al desactivar")
     }
 
-    override suspend fun getUsers(): Result<List<UserDto>> = safeApiCall {
-        val response = adminApi.getUsers()
+    override suspend fun getUsers(search: String?): Result<List<UserDto>> = safeApiCall {
+        val response = adminApi.getUsers(search)
         if (response.isSuccessful && response.body()?.success == true) {
-            response.body()!!.data ?: emptyList()
+            response.body()!!.data?.content ?: emptyList()
         } else throw Exception(response.body()?.message ?: "Error al obtener usuarios")
+    }
+
+    override suspend fun getReservations(status: String?): Result<List<ReservationDto>> = safeApiCall {
+        val response = adminApi.getReservations(status)
+        if (response.isSuccessful && response.body()?.success == true) {
+            response.body()!!.data?.content ?: emptyList()
+        } else throw Exception(response.body()?.message ?: "Error al obtener reservas")
     }
 
     override suspend fun updateUserStatus(id: Long, isActive: Boolean): Result<UserDto> = safeApiCall {

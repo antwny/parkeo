@@ -55,6 +55,27 @@ class OperatorRepositoryImpl(
         } else throw Exception(extractError(response, "Error al registrar salida"))
     }
 
+    override suspend fun getReservationByCode(code: String): Result<ReservationDto> = safeApiCall {
+        val response = operatorApi.getReservationByCode(code.trim())
+        if (response.isSuccessful && response.body()?.success == true) {
+            response.body()!!.data!!
+        } else throw Exception(extractError(response, "No se encontró una reserva con ese código"))
+    }
+
+    override suspend fun createWalkIn(
+        parkingLotId: Long,
+        vehicleTypeId: Long,
+        parkingSpaceId: Long?,
+        notes: String?
+    ): Result<ReservationDto> = safeApiCall {
+        val response = operatorApi.createWalkIn(
+            CreateWalkInRequestDto(parkingLotId, vehicleTypeId, parkingSpaceId, notes)
+        )
+        if (response.isSuccessful && response.body()?.success == true) {
+            response.body()!!.data!!
+        } else throw Exception(extractError(response, "Error al registrar walk-in"))
+    }
+
     private fun extractError(response: retrofit2.Response<*>, defaultMsg: String): String {
         return try {
             val raw = response.errorBody()?.string()

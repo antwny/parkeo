@@ -42,3 +42,9 @@ data class CreateReservationRequestDto(
 data class CancelReservationRequestDto(
     @SerialName("reason") val reason: String? = null
 )
+
+@Serializable
+data class CreateRatingRequestDto(
+    val rating: Int,
+    val comment: String? = null
+)

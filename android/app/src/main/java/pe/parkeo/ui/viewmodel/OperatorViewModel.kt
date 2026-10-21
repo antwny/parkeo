@@ -7,7 +7,9 @@ import kotlinx.coroutines.launch
 import pe.parkeo.data.remote.dto.ParkingLotDto
 import pe.parkeo.data.remote.dto.ParkingSpaceDto
 import pe.parkeo.data.remote.dto.ReservationDto
+import pe.parkeo.data.remote.dto.VehicleTypeDto
 import pe.parkeo.domain.repository.OperatorRepository
+import pe.parkeo.domain.repository.VehicleRepository
 import pe.parkeo.util.Result
 
 data class OperatorUiState(
@@ -22,12 +24,83 @@ data class OperatorUiState(
     val successMessage: String? = null
 )
 
+/** Estado del buscador por código PKO (y del registro walk-in). */
+data class CodeLookupState(
+    val isSearching: Boolean = false,
+    val result: ReservationDto? = null,
+    val error: String? = null
+)
+
 class OperatorViewModel(
-    private val operatorRepository: OperatorRepository
+    private val operatorRepository: OperatorRepository,
+    private val vehicleRepository: VehicleRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OperatorUiState())
     val uiState: StateFlow<OperatorUiState> = _uiState.asStateFlow()
+
+    private val _codeLookup = MutableStateFlow(CodeLookupState())
+    val codeLookup: StateFlow<CodeLookupState> = _codeLookup.asStateFlow()
+
+    private val _vehicleTypes = MutableStateFlow<List<VehicleTypeDto>>(emptyList())
+    val vehicleTypes: StateFlow<List<VehicleTypeDto>> = _vehicleTypes.asStateFlow()
+
+    init {
+        loadVehicleTypes()
+    }
+
+    private fun loadVehicleTypes() {
+        viewModelScope.launch {
+            when (val result = vehicleRepository.getVehicleTypes()) {
+                is Result.Success -> _vehicleTypes.value = result.data
+                else -> {}
+            }
+        }
+    }
+
+    /** Busca una reserva por código de confirmación (ej. PKO-XXXXXXX). */
+    fun findReservationByCode(code: String) {
+        if (code.isBlank()) return
+        viewModelScope.launch {
+            _codeLookup.update { it.copy(isSearching = true, error = null, result = null) }
+            when (val result = operatorRepository.getReservationByCode(code.trim())) {
+                is Result.Success -> _codeLookup.update { it.copy(isSearching = false, result = result.data) }
+                is Result.Error -> _codeLookup.update { it.copy(isSearching = false, error = result.message) }
+                else -> {}
+            }
+        }
+    }
+
+    fun clearCodeLookup() {
+        _codeLookup.value = CodeLookupState()
+    }
+
+    /** Registra un ingreso walk-in (sin reserva previa) sobre la cochera seleccionada. */
+    fun createWalkIn(vehicleTypeId: Long, parkingSpaceId: Long?, notes: String?) {
+        val lot = _uiState.value.selectedLot
+        if (lot == null) {
+            _codeLookup.update { it.copy(error = "Selecciona primero una cochera") }
+            return
+        }
+        viewModelScope.launch {
+            _codeLookup.update { it.copy(isSearching = true, error = null) }
+            when (val result = operatorRepository.createWalkIn(lot.id, vehicleTypeId, parkingSpaceId, notes)) {
+                is Result.Success -> {
+                    _codeLookup.update { it.copy(isSearching = false, result = result.data) }
+                    _uiState.update {
+                        it.copy(
+                            successMessage = "Ingreso walk-in registrado" +
+                                    (result.data.spaceNumber?.takeIf { s -> s.isNotBlank() }
+                                        ?.let { s -> " en el espacio $s" } ?: "")
+                        )
+                    }
+                    loadSpacesAndReservations(lot.id)
+                }
+                is Result.Error -> _codeLookup.update { it.copy(isSearching = false, error = result.message) }
+                else -> {}
+            }
+        }
+    }
 
     fun loadMyParkingLots(refresh: Boolean = false) {
         viewModelScope.launch {

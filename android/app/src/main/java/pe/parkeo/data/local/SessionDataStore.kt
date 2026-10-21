@@ -20,6 +20,8 @@ class SessionDataStore(private val context: Context) {
         val USER_NAME = stringPreferencesKey("user_name")
         val USER_ROLE = stringPreferencesKey("user_role")
         val ONBOARDING_SHOWN = booleanPreferencesKey("onboarding_shown")
+        // "system" | "light" | "dark"
+        val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
     val isLoggedIn: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -80,5 +82,17 @@ class SessionDataStore(private val context: Context) {
             val role = prefs[Keys.USER_ROLE] ?: "CLIENTE"
             Triple(email, name, role)
         } else null
+    }
+
+    // ─── Apariencia ────────────────────────────────────────────────────────────
+
+    val themeMode: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[Keys.THEME_MODE] ?: "system"
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.THEME_MODE] = mode
+        }
     }
 }

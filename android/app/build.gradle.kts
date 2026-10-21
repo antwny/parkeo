@@ -27,7 +27,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         manifestPlaceholders["MAPS_API_KEY"] = localProperties.getProperty("MAPS_API_KEY") ?: ""
-        val backendUrl = localProperties.getProperty("BACKEND_URL") ?: "http://192.168.18.8:8080/"
+        val backendUrl = localProperties.getProperty("BACKEND_URL") ?: "http://10.146.116.216:8080/"
         buildConfigField("String", "BASE_URL", "\"$backendUrl\"")
     }
 
@@ -76,6 +76,7 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

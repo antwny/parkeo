@@ -39,4 +39,9 @@ interface ParkingApi {
         @Path("id") id: Long,
         @Query("vehicleTypeId") vehicleTypeId: Long? = null
     ): Response<ApiResponseDto<List<ParkingSpaceDto>>>
+
+    @POST("api/v1/availability/check")
+    suspend fun checkAvailability(
+        @Body request: CheckAvailabilityRequestDto
+    ): Response<ApiResponseDto<AvailabilityCheckResponseDto>>
 }

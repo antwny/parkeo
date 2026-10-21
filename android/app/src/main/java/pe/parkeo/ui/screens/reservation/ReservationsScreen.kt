@@ -1,14 +1,11 @@
 package pe.parkeo.ui.screens.reservation
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -16,20 +13,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import pe.parkeo.data.remote.dto.ReservationDto
 import pe.parkeo.ui.components.*
 import pe.parkeo.ui.theme.*
 import pe.parkeo.ui.viewmodel.ReservationViewModel
-import pe.parkeo.util.DirectionsButton
 import pe.parkeo.util.ReminderScheduler
 
 @Composable
@@ -47,9 +39,28 @@ fun ReservationsScreen(
 
     var boardingPassReservation by remember { mutableStateOf<ReservationDto?>(null) }
     var reservationToCancel by remember { mutableStateOf<ReservationDto?>(null) }
+    var reservationToRate by remember { mutableStateOf<ReservationDto?>(null) }
 
     LaunchedEffect(selectedTab) {
         viewModel.loadReservations(statusFilters[selectedTab])
+    }
+
+    // Re-agendar recordatorios al cargar la pestaña de próximas
+    // (por si el app murió / los workers se eliminaron)
+    LaunchedEffect(uiState.reservations) {
+        if (selectedTab == 0) {
+            uiState.reservations
+                .filter { it.status in listOf("PENDING", "CONFIRMED") }
+                .forEach { reservation ->
+                    ReminderScheduler.schedule(
+                        context = context,
+                        reservationId = reservation.id,
+                        parkingLotName = reservation.parkingLotName.ifBlank { "tu cochera" },
+                        startIso = reservation.startTime,
+                        endIso = reservation.endTime
+                    )
+                }
+        }
     }
 
     // Cuando el ViewModel confirma una cancelación, se apagan sus recordatorios
@@ -118,14 +129,13 @@ fun ReservationsScreen(
 
             when {
                 uiState.isLoading -> {
-                    Box(
+                    ParkeoSkeletonList(
+                        itemCount = 4,
                         modifier = Modifier
                             .fillMaxSize()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        ParkeoLoadingView(message = "Cargando tus reservas...")
-                    }
+                            .weight(1f)
+                            .padding(Dimens.spacingMd)
+                    )
                 }
 
                 uiState.reservations.isEmpty() -> {
@@ -153,7 +163,8 @@ fun ReservationsScreen(
                             ReservationItemCard(
                                 reservation = reservation,
                                 onOpenBoardingPass = { boardingPassReservation = reservation },
-                                onCancelRequest = { reservationToCancel = reservation }
+                                onCancelRequest = { reservationToCancel = reservation },
+                                onRateRequest = { reservationToRate = reservation }
                             )
                         }
                     }
@@ -180,6 +191,18 @@ fun ReservationsScreen(
                 }
             )
         }
+
+        // Rating dialog (completadas)
+        reservationToRate?.let { reservation ->
+            RateReservationDialog(
+                reservation = reservation,
+                onDismiss = { reservationToRate = null },
+                onConfirm = { rating, comment ->
+                    viewModel.rateReservation(reservation.id, rating, comment)
+                    reservationToRate = null
+                }
+            )
+        }
     }
 }
 
@@ -187,11 +210,13 @@ fun ReservationsScreen(
 private fun ReservationItemCard(
     reservation: ReservationDto,
     onOpenBoardingPass: () -> Unit,
-    onCancelRequest: () -> Unit
+    onCancelRequest: () -> Unit,
+    onRateRequest: () -> Unit
 ) {
     val extended = ParkeoTheme.colors
     val canCancel = reservation.status in listOf("PENDING", "CONFIRMED")
     val isActive = reservation.status == "ACTIVE"
+    val isCompleted = reservation.status == "COMPLETED"
 
     val badgeStatus = when (reservation.status) {
         "PENDING" -> ParkeoBadgeStatus.Reserved
@@ -345,7 +370,7 @@ private fun ReservationItemCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ParkeoButton(
-                    text = "Ver Boarding Pass QR",
+                    text = "Boarding Pass",
                     onClick = onOpenBoardingPass,
                     style = ParkeoButtonStyle.Secondary,
                     modifier = Modifier
@@ -361,197 +386,110 @@ private fun ReservationItemCard(
                         modifier = Modifier.height(38.dp)
                     )
                 }
+
+                if (isCompleted) {
+                    ParkeoButton(
+                        text = "Calificar",
+                        onClick = onRateRequest,
+                        style = ParkeoButtonStyle.Ghost,
+                        modifier = Modifier.height(38.dp)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TicketBoardingPassDialog(
+private fun RateReservationDialog(
     reservation: ReservationDto,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onConfirm: (Int, String?) -> Unit
 ) {
     val extended = ParkeoTheme.colors
-    val code = reservation.confirmationCode ?: "PKO-${reservation.id}"
+    var selectedStars by remember { mutableIntStateOf(5) }
+    var comment by remember { mutableStateOf("") }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp)),
-            color = extended.surface1,
-            shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(Dimens.borderHairline, extended.accent.copy(alpha = 0.5f))
-        ) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = extended.surface1,
+        titleContentColor = extended.textPrimary,
+        textContentColor = extended.textSecondary,
+        title = {
+            Text(
+                text = "¿Cómo estuvo \"${reservation.parkingLotName}\"?",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(Dimens.spacingLg),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Header Badge
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Filled.ConfirmationNumber,
-                            contentDescription = null,
-                            tint = extended.accent,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "BOARDING PASS DIGITAL",
-                            style = Typography.MonospaceTechnical,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = extended.accent,
-                            letterSpacing = 1.sp
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Cerrar",
-                            tint = extended.textTertiary
-                        )
-                    }
-                }
-
-                // QR Code Presentation Box
-                Surface(
-                    modifier = Modifier
-                        .size(190.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    color = Color.White,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        QrCodeMatrix(
-                            content = code,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-
-                // Monospace code display
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "CÓDIGO DE RESERVA",
-                        style = Typography.MonospaceTechnical,
-                        fontSize = 10.sp,
-                        color = extended.textTertiary,
-                        letterSpacing = 1.5.sp
-                    )
-                    Text(
-                        text = code,
-                        style = Typography.MonospaceTechnical,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = extended.accent,
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        text = "Muestra este código al operador en puerta",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = 11.sp,
-                        color = extended.textSecondary,
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                HorizontalDivider(
-                    color = extended.borderSubtle,
-                    thickness = Dimens.borderHairline
+                Text(
+                    text = "Tu opinión ayuda a otros conductores y a mejorar la cochera.",
+                    style = MaterialTheme.typography.bodySmall
                 )
 
-                // Details Grid
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Estrellas 1-5
+                Row(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    BoardingPassRow(label = "Estacionamiento", value = reservation.parkingLotName)
-                    BoardingPassRow(label = "Dirección", value = reservation.parkingLotAddress)
-                    BoardingPassRow(
-                        label = "Espacio asignado",
-                        value = if (reservation.spaceNumber.isNotBlank()) reservation.spaceNumber else "En puerta",
-                        isHighlight = true
-                    )
-                    BoardingPassRow(
-                        label = "Placa del vehículo",
-                        value = reservation.vehicleLicensePlate,
-                        isHighlight = true
-                    )
-                    BoardingPassRow(label = "Inicio", value = formatDisplayDate(reservation.startTime))
-                    BoardingPassRow(label = "Salida programada", value = formatDisplayDate(reservation.endTime))
-                    reservation.totalPrice?.let { price ->
-                        BoardingPassRow(
-                            label = "Tarifa estimada",
-                            value = "S/ ${String.format(java.util.Locale.US, "%.2f", price)}",
-                            isHighlight = true
-                        )
+                    (1..5).forEach { star ->
+                        IconButton(
+                            onClick = { selectedStars = star },
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (star <= selectedStars) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                contentDescription = "$star estrellas",
+                                tint = if (star <= selectedStars) extended.accent else extended.textTertiary,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
                     }
                 }
 
-                // Route action if available
-                val lat = reservation.parkingLotLatitude
-                val lng = reservation.parkingLotLongitude
-                if (lat != null && lng != null) {
-                    Spacer(Modifier.height(4.dp))
-                    DirectionsButton(latitude = lat, longitude = lng)
-                }
-
-                ParkeoButton(
-                    text = "Cerrar",
-                    onClick = onDismiss,
-                    style = ParkeoButtonStyle.Secondary,
+                TextField(
+                    value = comment,
+                    onValueChange = { comment = it.take(300) },
+                    placeholder = { Text("Comentario (opcional)") },
+                    minLines = 2,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = extended.surface2,
+                        unfocusedContainerColor = extended.surface2,
+                        focusedIndicatorColor = extended.accent,
+                        unfocusedIndicatorColor = extended.borderSubtle,
+                        cursorColor = extended.accent,
+                        focusedTextColor = extended.textPrimary,
+                        unfocusedTextColor = extended.textPrimary
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        },
+        confirmButton = {
+            ParkeoButton(
+                text = "Enviar calificación",
+                onClick = {
+                    onConfirm(
+                        selectedStars,
+                        comment.takeIf { it.isNotBlank() }
+                    )
+                },
+                style = ParkeoButtonStyle.Primary
+            )
+        },
+        dismissButton = {
+            ParkeoButton(
+                text = "Cerrar",
+                onClick = onDismiss,
+                style = ParkeoButtonStyle.Ghost
+            )
         }
-    }
-}
-
-@Composable
-private fun BoardingPassRow(
-    label: String,
-    value: String,
-    isHighlight: Boolean = false
-) {
-    val extended = ParkeoTheme.colors
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = extended.textSecondary
-        )
-        Text(
-            text = value,
-            style = if (isHighlight) Typography.MonospaceTechnical else MaterialTheme.typography.bodySmall,
-            fontWeight = if (isHighlight) FontWeight.Bold else FontWeight.Medium,
-            color = if (isHighlight) extended.accent else extended.textPrimary,
-            textAlign = TextAlign.End,
-            modifier = Modifier.padding(start = 12.dp)
-        )
-    }
+    )
 }
 
 @Composable
@@ -647,80 +585,4 @@ private fun CancelReservationDialog(
             )
         }
     )
-}
-
-@Composable
-private fun QrCodeMatrix(
-    content: String,
-    modifier: Modifier = Modifier
-) {
-    val gridSize = 21
-    val bitMatrix = remember(content) {
-        val matrix = Array(gridSize) { BooleanArray(gridSize) }
-
-        // Finder patterns (7x7 con centro 3x3) en las 3 esquinas
-        fun markFinder(startR: Int, startC: Int) {
-            for (r in 0 until 7) {
-                for (c in 0 until 7) {
-                    val isBorder = r == 0 || r == 6 || c == 0 || c == 6
-                    val isCenter = r in 2..4 && c in 2..4
-                    matrix[startR + r][startC + c] = isBorder || isCenter
-                }
-            }
-        }
-        markFinder(0, 0)
-        markFinder(0, gridSize - 7)
-        markFinder(gridSize - 7, 0)
-
-        // Líneas de sincronización (timing patterns)
-        for (i in 7 until gridSize - 7) {
-            matrix[6][i] = (i % 2 == 0)
-            matrix[i][6] = (i % 2 == 0)
-        }
-
-        // Datos generados determinísticamente a partir del hash del código
-        var hash = content.hashCode()
-        for (r in 0 until gridSize) {
-            for (c in 0 until gridSize) {
-                val inFinder1 = r < 8 && c < 8
-                val inFinder2 = r < 8 && c >= gridSize - 8
-                val inFinder3 = r >= gridSize - 8 && c < 8
-                val inTiming = r == 6 || c == 6
-                if (!inFinder1 && !inFinder2 && !inFinder3 && !inTiming) {
-                    hash = (hash * 31 + r * 17 + c * 23)
-                    matrix[r][c] = (hash and 1) == 1
-                }
-            }
-        }
-        matrix
-    }
-
-    Canvas(modifier = modifier) {
-        val cellSize = size.minDimension / gridSize
-        val paddingX = (size.width - cellSize * gridSize) / 2f
-        val paddingY = (size.height - cellSize * gridSize) / 2f
-
-        for (r in 0 until gridSize) {
-            for (c in 0 until gridSize) {
-                if (bitMatrix[r][c]) {
-                    drawRect(
-                        color = Color.Black,
-                        topLeft = Offset(paddingX + c * cellSize, paddingY + r * cellSize),
-                        size = Size(cellSize * 0.95f, cellSize * 0.95f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun formatDisplayDate(raw: String): String {
-    val clean = raw.take(16).replace("T", " ")
-    return if (clean.length >= 10 && clean.contains("-")) {
-        val parts = clean.split(" ")
-        val ymd = parts[0].split("-")
-        if (ymd.size == 3) {
-            "${ymd[2]}/${ymd[1]} ${if (parts.size > 1) parts[1] else ""}".trim()
-        } else clean
-    } else clean
 }

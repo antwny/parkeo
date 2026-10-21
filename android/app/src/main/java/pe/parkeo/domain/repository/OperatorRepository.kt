@@ -10,4 +10,6 @@ interface OperatorRepository {
     suspend fun getReservations(lotId: Long, status: String? = null): Result<List<ReservationDto>>
     suspend fun checkIn(reservationId: Long): Result<ReservationDto>
     suspend fun checkOut(reservationId: Long): Result<ReservationDto>
+    suspend fun getReservationByCode(code: String): Result<ReservationDto>
+    suspend fun createWalkIn(parkingLotId: Long, vehicleTypeId: Long, parkingSpaceId: Long?, notes: String?): Result<ReservationDto>
 }

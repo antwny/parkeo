@@ -76,6 +76,17 @@ class ReservationRepositoryImpl(
         }
     }
 
+    override suspend fun rateReservation(id: Long, rating: Int, comment: String?): Result<Unit> {
+        return try {
+            val response = reservationApi.rateReservation(id, CreateRatingRequestDto(rating, comment))
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.Success(Unit)
+            } else Result.Error(errorMessage(response, "Error al calificar la reserva"))
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "Error de conexión")
+        }
+    }
+
     /**
      * Cuando el backend responde 400/409/etc., el mensaje viene en el errorBody
      * (ej: "El espacio ya está reservado para el período solicitado"), no en body().

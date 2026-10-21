@@ -63,6 +63,20 @@ class VehicleViewModel(
         }
     }
 
+    fun updateVehicle(vehicleId: Long, licensePlate: String, brand: String?, model: String?, color: String?, vehicleTypeId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            when (val result = vehicleRepository.updateVehicle(vehicleId, licensePlate, brand, model, color, vehicleTypeId)) {
+                is Result.Success -> {
+                    loadVehicles()
+                    _uiState.update { it.copy(successMessage = "Vehículo actualizado") }
+                }
+                is Result.Error -> _uiState.update { it.copy(isLoading = false, error = result.message) }
+                else -> {}
+            }
+        }
+    }
+
     fun deleteVehicle(id: Long) {
         viewModelScope.launch {
             when (vehicleRepository.deleteVehicle(id)) {

@@ -112,8 +112,32 @@ data class ParkingSpaceDto(
     val status: String = "AVAILABLE",
     @SerialName("vehicleTypeName") val vehicleTypeName: String? = null,
     @SerialName("vehicleType") val vehicleTypeVal: String? = null,
-    @SerialName("isAvailable") val isAvailableVal: Boolean? = null
+    @SerialName("isAvailable") val isAvailableVal: Boolean? = null,
+    val floor: String? = null,
+    val section: String? = null,
+    @SerialName("isCovered") val isCovered: Boolean? = null,
+    @SerialName("vehicleTypeId") val vehicleTypeId: Long? = null
 ) {
     val vehicleType: String get() = vehicleTypeName ?: (vehicleTypeVal ?: "")
     val isAvailable: Boolean get() = isAvailableVal ?: (status == "AVAILABLE")
 }
+
+// ─── Disponibilidad para rango de tiempo (pre-reserva) ───────────────────────
+
+@Serializable
+data class CheckAvailabilityRequestDto(
+    @SerialName("parkingLotId") val parkingLotId: Long,
+    @SerialName("vehicleTypeId") val vehicleTypeId: Long,
+    @SerialName("startTime") val startTime: String,
+    @SerialName("endTime") val endTime: String
+)
+
+@Serializable
+data class AvailabilityCheckResponseDto(
+    @SerialName("parkingLotId") val parkingLotId: Long = 0,
+    @SerialName("isAvailable") val isAvailable: Boolean = false,
+    @SerialName("totalHours") val totalHours: Long = 0,
+    @SerialName("calculatedPrice") val calculatedPrice: Double? = null,
+    val currency: String? = "PEN",
+    @SerialName("availableSpaces") val availableSpaces: List<ParkingSpaceDto> = emptyList()
+)

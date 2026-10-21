@@ -23,4 +23,10 @@ interface ReservationApi {
         @Path("id") id: Long,
         @Body body: CancelReservationRequestDto = CancelReservationRequestDto()
     ): Response<ApiResponseDto<ReservationDto>>
+
+    @POST("api/reservations/{id}/rating")
+    suspend fun rateReservation(
+        @Path("id") id: Long,
+        @Body body: CreateRatingRequestDto
+    ): Response<ApiResponseDto<Unit>>
 }

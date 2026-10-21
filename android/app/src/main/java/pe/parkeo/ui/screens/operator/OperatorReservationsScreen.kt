@@ -60,6 +60,8 @@ fun OperatorReservationsScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     var reservationToConfirmAction by remember { mutableStateOf<Pair<ReservationDto, String>?>(null) }
+    var showCodeLookup by remember { mutableStateOf(false) }
+    var showWalkIn by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.selectedLot) {
         uiState.selectedLot?.id?.let { lotId ->
@@ -170,6 +172,40 @@ fun OperatorReservationsScreen(
                 )
             }
 
+            // Acciones rápidas: búsqueda por código PKO y walk-in
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Dimens.spacingMd, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            ) {
+                ParkeoButton(
+                    text = "Código PKO",
+                    leadingIcon = Icons.Filled.QrCodeScanner,
+                    onClick = {
+                        viewModel.clearCodeLookup()
+                        showCodeLookup = true
+                    },
+                    style = ParkeoButtonStyle.Secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                )
+
+                ParkeoButton(
+                    text = "Walk-in",
+                    leadingIcon = Icons.Filled.GroupAdd,
+                    onClick = {
+                        viewModel.clearCodeLookup()
+                        showWalkIn = true
+                    },
+                    style = ParkeoButtonStyle.Primary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                )
+            }
+
             // Pestañas de estado con contadores dinámicos
             TabRow(
                 selectedTabIndex = selectedTab,
@@ -227,6 +263,21 @@ fun OperatorReservationsScreen(
                 }
             }
         }
+    }
+
+    // Diálogos: búsqueda por código PKO y registro walk-in
+    if (showCodeLookup) {
+        CodeLookupDialog(
+            viewModel = viewModel,
+            onDismiss = { showCodeLookup = false }
+        )
+    }
+
+    if (showWalkIn) {
+        WalkInDialog(
+            viewModel = viewModel,
+            onDismiss = { showWalkIn = false }
+        )
     }
 
     // Diálogo de confirmación para Check-In o Check-Out
@@ -472,6 +523,470 @@ private fun OperatorReservationCard(
                 }
             }
         }
+    }
+}
+
+// ─── Diálogo: buscar reserva por código PKO ───────────────────────────────────
+
+@Composable
+private fun CodeLookupDialog(
+    viewModel: OperatorViewModel,
+    onDismiss: () -> Unit
+) {
+    val lookup by viewModel.codeLookup.collectAsState()
+    val extended = ParkeoTheme.colors
+    var code by remember { mutableStateOf("") }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+    AlertDialog(
+        onDismissRequest = {
+            viewModel.clearCodeLookup()
+            onDismiss()
+        },
+        containerColor = extended.surface1,
+        titleContentColor = extended.textPrimary,
+        textContentColor = extended.textSecondary,
+        title = {
+            Text(
+                text = "Buscar por código PKO",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                // Prefijo "PKO-" fijo + sufijo de solo dígitos/letras (sin guiones,
+                // para evitar problemas con el autocorrector del teclado).
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "PKO-",
+                        style = Typography.MonospaceTechnical,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = extended.accent
+                    )
+                    ParkeoTextField(
+                        value = code,
+                        onValueChange = { input ->
+                            code = input.uppercase().filter { it.isLetterOrDigit() }.take(8)
+                        },
+                        placeholder = "XXXXXXXX",
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                when {
+                    lookup.isSearching -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = extended.accent
+                            )
+                            Text("Buscando…", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+
+                    lookup.error != null -> {
+                        val errorText = lookup.error.orEmpty()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.ErrorOutline, null,
+                                tint = extended.signalRed,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                errorText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = extended.signalRed
+                            )
+                        }
+                    }
+
+                    lookup.result != null -> {
+                        val found = lookup.result!!
+                        val statusLabel = when (found.status) {
+                            "PENDING" -> "Pendiente"
+                            "CONFIRMED" -> "Confirmada"
+                            "ACTIVE" -> "En cochera"
+                            "COMPLETED" -> "Completada"
+                            "CANCELLED" -> "Cancelada"
+                            "NO_SHOW" -> "No se presentó"
+                            else -> found.status
+                        }
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = extended.surface2,
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                Dimens.borderHairline, extended.accent.copy(alpha = 0.4f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            found.parkingLotName,
+                                            fontWeight = FontWeight.Bold,
+                                            color = extended.textPrimary,
+                                            fontSize = 14.sp
+                                        )
+                                        Text(
+                                            "Espacio ${found.spaceNumber?.ifBlank { "a asignar" } ?: "a asignar"} • ${formatIso(found.startTime)} - ${formatIso(found.endTime)}",
+                                            style = Typography.MonospaceTechnical,
+                                            fontSize = 11.sp,
+                                            color = extended.textSecondary
+                                        )
+                                    }
+                                    Surface(
+                                        color = extended.accent.copy(alpha = 0.14f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text(
+                                            statusLabel,
+                                            color = extended.accent,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    else -> {
+                        Text(
+                            "Escríbelo tal como aparece en el boarding pass del conductor (o pídele que lo muestre en su QR).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = extended.textTertiary
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (lookup.result == null) {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(
+                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
+                        )
+                        viewModel.findReservationByCode("PKO-" + code)
+
+                    },
+                    enabled = code.length >= 4 && !lookup.isSearching,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = extended.accent,
+                        contentColor = extended.onAccent
+                    )
+                ) {
+                    Text("Buscar")
+                }
+            } else {
+                val found = lookup.result!!
+                val canCheckIn = found.status in listOf("PENDING", "CONFIRMED")
+                val canCheckOut = found.status == "ACTIVE"
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    when {
+                        canCheckIn -> Button(
+                            onClick = {
+                                viewModel.checkIn(found.id)
+                                viewModel.clearCodeLookup()
+                                onDismiss()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = extended.accent,
+                                contentColor = extended.onAccent
+                            )
+                        ) { Text("Check-In") }
+
+                        canCheckOut -> Button(
+                            onClick = {
+                                viewModel.checkOut(found.id)
+                                viewModel.clearCodeLookup()
+                                onDismiss()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = extended.signalGreen,
+                                contentColor = Color.White
+                            )
+                        ) { Text("Check-Out") }
+
+                        else -> TextButton(onClick = {
+                            viewModel.clearCodeLookup()
+                            onDismiss()
+                        }) { Text("Listo") }
+                    }
+
+                    TextButton(onClick = {
+                        viewModel.clearCodeLookup()
+                        onDismiss()
+                    }) { Text("Cerrar") }
+                }
+            }
+        },
+        dismissButton = {}
+    )
+}
+
+// ─── Diálogo: registro walk-in (sin reserva previa) ───────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WalkInDialog(
+    viewModel: OperatorViewModel,
+    onDismiss: () -> Unit
+) {
+    val types by viewModel.vehicleTypes.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val lookup by viewModel.codeLookup.collectAsState()
+    val extended = ParkeoTheme.colors
+
+    var selectedTypeId by remember(types) {
+        mutableStateOf(types.firstOrNull()?.id)
+    }
+    var selectedSpaceId by remember { mutableStateOf<Long?>(null) } // null = asignación automática
+    var expandedTypeMenu by remember { mutableStateOf(false) }
+
+    val freeSpaces = remember(uiState.spaces, selectedTypeId) {
+        uiState.spaces.filter {
+            it.status == "AVAILABLE" &&
+                    it.vehicleTypeId == selectedTypeId
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = {
+            viewModel.clearCodeLookup()
+            onDismiss()
+        },
+        containerColor = extended.surface1,
+        titleContentColor = extended.textPrimary,
+        textContentColor = extended.textSecondary,
+        title = {
+            Text(
+                text = "Ingreso walk-in",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+                Text(
+                    text = "Registra un vehículo en ${uiState.selectedLot?.name ?: "la cochera"} sin reserva previa. El espacio queda ocupado por 1 hora y su salida se cierra con Check-Out.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                if (lookup.isSearching) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = extended.accent
+                        )
+                        Text("Registrando…", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                if (lookup.error != null) {
+                    val errorText = lookup.error.orEmpty()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.ErrorOutline, null,
+                            tint = extended.signalRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            errorText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = extended.signalRed
+                        )
+                    }
+                }
+
+                if (lookup.result != null) {
+                    val result = lookup.result!!
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = extended.signalGreen.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            Dimens.borderHairline, extended.signalGreen.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Filled.CheckCircle, null,
+                                tint = extended.signalGreen,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Vehículo registrado",
+                                fontWeight = FontWeight.Bold,
+                                color = extended.signalGreen
+                            )
+                            Text(
+                                text = "Reserva ${result.confirmationCode ?: "PKO-${result.id}"} • Espacio ${result.spaceNumber?.ifBlank { "asignado" } ?: "asignado"}",
+                                style = Typography.MonospaceTechnical,
+                                fontSize = 12.sp,
+                                color = extended.textSecondary
+                            )
+                        }
+                    }
+                } else {
+                    // Tipo de vehículo
+                    ExposedDropdownMenuBox(
+                        expanded = expandedTypeMenu,
+                        onExpandedChange = { expandedTypeMenu = it }
+                    ) {
+                        ParkeoTextField(
+                            value = types.firstOrNull { it.id == selectedTypeId }?.name ?: "Sin tipo",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = "Tipo de vehículo",
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedTypeMenu) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedTypeMenu,
+                            onDismissRequest = { expandedTypeMenu = false }
+                        ) {
+                            types.forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type.name) },
+                                    onClick = {
+                                        selectedTypeId = type.id
+                                        selectedSpaceId = null
+                                        expandedTypeMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Espacio concreto (opcional)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        item {
+                            SpaceChipSmall(
+                                label = "Auto",
+                                isSelected = selectedSpaceId == null,
+                                onClick = { selectedSpaceId = null }
+                            )
+                        }
+                        items(freeSpaces, key = { it.id }) { space ->
+                            SpaceChipSmall(
+                                label = space.spaceNumber,
+                                isSelected = selectedSpaceId == space.id,
+                                onClick = { selectedSpaceId = space.id }
+                            )
+                        }
+                    }
+                    if (freeSpaces.isEmpty()) {
+                        Text(
+                            "No hay espacios AVAILABLE para ese tipo: se asignará uno automáticamente si existe.",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 10.sp,
+                            color = extended.signalAmber
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (lookup.result == null) {
+                Button(
+                    onClick = {
+                        selectedTypeId?.let { typeId ->
+                            viewModel.createWalkIn(
+                                vehicleTypeId = typeId,
+                                parkingSpaceId = selectedSpaceId,
+                                notes = "WALK-IN en puerta"
+                            )
+                        }
+                    },
+                    enabled = selectedTypeId != null && !lookup.isSearching,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = extended.accent,
+                        contentColor = extended.onAccent
+                    )
+                ) {
+                    Text("Registrar ingreso")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        viewModel.clearCodeLookup()
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = extended.accent,
+                        contentColor = extended.onAccent
+                    )
+                ) {
+                    Text("Listo")
+                }
+            }
+        },
+        dismissButton = {
+            if (lookup.result == null) {
+                TextButton(onClick = {
+                    viewModel.clearCodeLookup()
+                    onDismiss()
+                }) { Text("Cancelar") }
+            }
+        }
+    )
+}
+
+@Composable
+private fun SpaceChipSmall(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val extended = ParkeoTheme.colors
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = if (isSelected) extended.accent.copy(alpha = 0.16f) else extended.surface2,
+        border = androidx.compose.foundation.BorderStroke(
+            Dimens.borderHairline,
+            if (isSelected) extended.accent else extended.borderSubtle
+        )
+    ) {
+        Text(
+            text = label,
+            style = Typography.MonospaceTechnical,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isSelected) extended.accent else extended.textPrimary,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
     }
 }
 

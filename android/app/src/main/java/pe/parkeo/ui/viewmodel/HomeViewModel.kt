@@ -2,6 +2,7 @@ package pe.parkeo.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import pe.parkeo.data.remote.dto.ParkingLotDto
@@ -22,8 +23,30 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    /** Fuente de cambios de búsqueda: debounce + cancelación (collectLatest). */
+    private val searchQueries = MutableSharedFlow<String>(extraBufferCapacity = 8)
+
     init {
         loadParkingLots()
+        @OptIn(FlowPreview::class)
+        viewModelScope.launch {
+            searchQueries
+                .debounce(300)
+                .collectLatest { query ->
+                    if (query.isBlank()) {
+                        val result = parkingRepository.getParkingLots()
+                        if (result is Result.Success) {
+                            _uiState.update { it.copy(parkingLots = result.data, error = null, searchQuery = "") }
+                        }
+                    } else {
+                        when (val result = parkingRepository.searchParkingLots(query)) {
+                            is Result.Success -> _uiState.update { it.copy(parkingLots = result.data, error = null) }
+                            is Result.Error -> _uiState.update { it.copy(error = result.message) }
+                            else -> {}
+                        }
+                    }
+                }
+        }
     }
 
     fun loadParkingLots() {
@@ -50,16 +73,6 @@ class HomeViewModel(
 
     fun search(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        if (query.isBlank()) {
-            loadParkingLots()
-            return
-        }
-        viewModelScope.launch {
-            when (val result = parkingRepository.searchParkingLots(query)) {
-                is Result.Success -> _uiState.update { it.copy(parkingLots = result.data) }
-                is Result.Error -> _uiState.update { it.copy(error = result.message) }
-                else -> {}
-            }
-        }
+        searchQueries.tryEmit(query)
     }
 }

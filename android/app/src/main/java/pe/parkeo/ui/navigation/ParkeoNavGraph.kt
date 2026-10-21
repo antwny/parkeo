@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import pe.parkeo.ui.screens.admin.AdminReservationsScreen
 import pe.parkeo.ui.screens.auth.LoginScreen
 import pe.parkeo.ui.screens.auth.RegisterScreen
 import pe.parkeo.ui.screens.home.HomeScreen
@@ -114,6 +115,9 @@ fun ParkeoNavGraph(
                     navController.navigate(NavRoutes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onNavigateToAdminReservations = {
+                    navController.navigate(NavRoutes.ADMIN_RESERVATIONS)
                 }
             )
         }
@@ -172,6 +176,14 @@ fun ParkeoNavGraph(
             )
         }
 
+        composable(NavRoutes.ADMIN_RESERVATIONS) {
+            val adminViewModel: AdminViewModel = viewModel(factory = viewModelFactory)
+            AdminReservationsScreen(
+                viewModel = adminViewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         composable(NavRoutes.PROFILE) {
             val authViewModel: AuthViewModel = viewModel(factory = viewModelFactory)
             ProfileScreen(
@@ -179,6 +191,7 @@ fun ParkeoNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToVehicles = { navController.navigate(NavRoutes.VEHICLES) },
                 onNavigateToReservations = { navController.navigate(NavRoutes.RESERVATIONS) },
+                onNavigateToAdminReservations = { navController.navigate(NavRoutes.ADMIN_RESERVATIONS) },
                 onLogout = {
                     navController.navigate(NavRoutes.LOGIN) {
                         popUpTo(0) { inclusive = true }

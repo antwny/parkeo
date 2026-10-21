@@ -26,7 +26,8 @@ import pe.parkeo.ui.viewmodel.AdminViewModel
 fun AdminDashboardScreen(
     viewModel: AdminViewModel,
     onNavigateToParkingLots: () -> Unit = {},
-    onNavigateToUsers: () -> Unit = {}
+    onNavigateToUsers: () -> Unit = {},
+    onNavigateToReservations: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val extended = ParkeoTheme.colors
@@ -201,6 +202,57 @@ fun AdminDashboardScreen(
                                 )
                                 Text(
                                     text = "${uiState.parkingLots.size} locales en la red. Control de disponibilidad y estado.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = extended.textSecondary
+                                )
+                            }
+
+                            Icon(
+                                Icons.Filled.ChevronRight,
+                                contentDescription = null,
+                                tint = extended.textTertiary
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    ParkeoCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onNavigateToReservations)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(Dimens.spacingLg),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .background(extended.surface3, CircleShape)
+                                    .border(Dimens.borderHairline, extended.borderSubtle, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.EventNote,
+                                    contentDescription = null,
+                                    tint = extended.textPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Reservas de la red",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = extended.textPrimary
+                                )
+                                Text(
+                                    text = "Supervisa todas las reservas por estado (confirmadas, activas, no-show).",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = extended.textSecondary
                                 )

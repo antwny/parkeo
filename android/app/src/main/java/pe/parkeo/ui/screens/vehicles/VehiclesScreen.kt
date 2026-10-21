@@ -28,10 +28,12 @@ fun VehiclesScreen(
     val uiState by viewModel.uiState.collectAsState()
     val extended = ParkeoTheme.colors
     var showAddDialog by remember { mutableStateOf(false) }
+    var vehicleToEdit by remember { mutableStateOf<VehicleDto?>(null) }
 
     LaunchedEffect(uiState.successMessage) {
         if (uiState.successMessage != null) {
             showAddDialog = false
+            vehicleToEdit = null
             viewModel.clearMessages()
         }
     }
@@ -102,6 +104,7 @@ fun VehiclesScreen(
                     items(uiState.vehicles, key = { it.id }) { vehicle ->
                         VehicleCard(
                             vehicle = vehicle,
+                            onEdit = { vehicleToEdit = vehicle },
                             onDelete = { viewModel.deleteVehicle(vehicle.id) }
                         )
                     }
@@ -123,11 +126,27 @@ fun VehiclesScreen(
                 }
             )
         }
+
+        vehicleToEdit?.let { vehicle ->
+            EditVehicleDialog(
+                vehicle = vehicle,
+                vehicleTypes = uiState.vehicleTypes,
+                isLoading = uiState.isLoading,
+                errorMessage = uiState.error,
+                onDismiss = {
+                    vehicleToEdit = null
+                    viewModel.clearMessages()
+                },
+                onSave = { plate, brand, model, color, typeId ->
+                    viewModel.updateVehicle(vehicle.id, plate, brand, model, color, typeId)
+                }
+            )
+        }
     }
 }
 
 @Composable
-private fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
+private fun VehicleCard(vehicle: VehicleDto, onEdit: () -> Unit, onDelete: () -> Unit) {
     val extended = ParkeoTheme.colors
     var showConfirmDialog by remember { mutableStateOf(false) }
 
@@ -156,6 +175,15 @@ private fun VehicleCard(vehicle: VehicleDto, onDelete: () -> Unit) {
                     text = listOfNotNull(vehicle.color, vehicle.vehicleType.name).filter { it.isNotBlank() }.joinToString(" • "),
                     style = MaterialTheme.typography.bodySmall,
                     color = extended.textSecondary
+                )
+            }
+
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Editar",
+                    tint = extended.accent,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -394,6 +422,177 @@ private fun AddVehicleDialog(
                 onClick = {
                     selectedTypeId?.let { typeId ->
                         onAdd(
+                            plate.trim(),
+                            brand.trim().ifBlank { null },
+                            model.trim().ifBlank { null },
+                            color.trim().ifBlank { null },
+                            typeId
+                        )
+                    }
+                },
+                enabled = plate.length == 7 && selectedTypeId != null && !isLoading,
+                style = ParkeoButtonStyle.Primary,
+                modifier = Modifier.height(Dimens.buttonHeightDefault)
+            )
+        },
+        dismissButton = {
+            ParkeoButton(
+                text = "Cancelar",
+                onClick = onDismiss,
+                style = ParkeoButtonStyle.Ghost,
+                modifier = Modifier.height(Dimens.buttonHeightDefault)
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditVehicleDialog(
+    vehicle: VehicleDto,
+    vehicleTypes: List<pe.parkeo.data.remote.dto.VehicleTypeDto>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onDismiss: () -> Unit,
+    onSave: (String, String?, String?, String?, Long) -> Unit
+) {
+    val extended = ParkeoTheme.colors
+    var plate by remember { mutableStateOf(vehicle.licensePlate) }
+    var brand by remember { mutableStateOf(vehicle.brand ?: "") }
+    var model by remember { mutableStateOf(vehicle.model ?: "") }
+    var color by remember { mutableStateOf(vehicle.color ?: "") }
+    var selectedTypeId by remember(vehicleTypes) {
+        mutableStateOf(
+            vehicleTypes.firstOrNull { it.name.equals(vehicle.vehicleType.name, ignoreCase = true) }?.id
+                ?: vehicle.vehicleTypeId
+                ?: vehicleTypes.firstOrNull()?.id
+        )
+    }
+    var expanded by remember { mutableStateOf(false) }
+
+    val alphaNumericRegex = Regex("^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]*$")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = extended.surface1,
+        title = {
+            Text(
+                text = "Editar vehículo",
+                fontWeight = FontWeight.Bold,
+                color = extended.textPrimary
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            ) {
+                errorMessage?.let { errorText ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = ParkeoCardShape,
+                        color = extended.signalRed.copy(alpha = 0.12f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            Dimens.borderHairline,
+                            extended.signalRed.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(Dimens.spacingSm),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ErrorOutline,
+                                contentDescription = null,
+                                tint = extended.signalRed,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(Dimens.spacingSm))
+                            Text(
+                                text = errorText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = extended.signalRed,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                ParkeoTextField(
+                    value = plate,
+                    onValueChange = { input ->
+                        if (input.length <= 7) {
+                            plate = formatPeruvianPlate(input)
+                        }
+                    },
+                    label = "Placa *",
+                    placeholder = "ABC-123",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ParkeoTextField(
+                    value = brand,
+                    onValueChange = { if (it.matches(alphaNumericRegex)) brand = it },
+                    label = "Marca",
+                    placeholder = "Toyota",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ParkeoTextField(
+                    value = model,
+                    onValueChange = { if (it.matches(alphaNumericRegex)) model = it },
+                    label = "Modelo",
+                    placeholder = "Corolla",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ParkeoTextField(
+                    value = color,
+                    onValueChange = { if (it.matches(alphaNumericRegex)) color = it },
+                    label = "Color",
+                    placeholder = "Gris Metálico",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }
+                ) {
+                    ParkeoTextField(
+                        value = vehicleTypes.firstOrNull { it.id == selectedTypeId }?.name
+                            ?: if (vehicleTypes.isEmpty()) "Cargando tipos..." else "Seleccionar tipo",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = "Tipo de vehículo",
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        vehicleTypes.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.name) },
+                                onClick = {
+                                    selectedTypeId = type.id
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            ParkeoButton(
+                text = "Guardar cambios",
+                isLoading = isLoading,
+                onClick = {
+                    selectedTypeId?.let { typeId ->
+                        onSave(
                             plate.trim(),
                             brand.trim().ifBlank { null },
                             model.trim().ifBlank { null },

@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import pe.parkeo.data.remote.dto.AvailabilityCheckResponseDto
 import pe.parkeo.data.remote.dto.ReservationDto
+import pe.parkeo.domain.repository.ParkingRepository
 import pe.parkeo.domain.repository.ReservationRepository
 import pe.parkeo.util.Result
 
@@ -19,12 +21,50 @@ data class ReservationUiState(
     val cancelledReservationId: Long? = null
 )
 
+/** Estado del chequeo de disponibilidad previo a confirmar la reserva. */
+data class AvailabilityCheckUiState(
+    val isChecking: Boolean = false,
+    val check: AvailabilityCheckResponseDto? = null,
+    val error: String? = null
+)
+
 class ReservationViewModel(
-    private val reservationRepository: ReservationRepository
+    private val reservationRepository: ReservationRepository,
+    private val parkingRepository: ParkingRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReservationUiState())
     val uiState: StateFlow<ReservationUiState> = _uiState.asStateFlow()
+
+    private val _availability = MutableStateFlow(AvailabilityCheckUiState())
+    val availability: StateFlow<AvailabilityCheckUiState> = _availability.asStateFlow()
+
+    private var lastCheckSignature: String? = null
+
+    /** Consulta al servidor si el horario elegido está disponible y su precio real. */
+    fun checkAvailability(
+        parkingLotId: Long,
+        vehicleTypeId: Long,
+        startTime: String,
+        endTime: String
+    ) {
+        val signature = "$parkingLotId|$vehicleTypeId|$startTime|$endTime"
+        if (signature == lastCheckSignature && (_availability.value.check != null || _availability.value.error != null)) return
+        lastCheckSignature = signature
+        viewModelScope.launch {
+            _availability.update { it.copy(isChecking = true, error = null) }
+            when (val result = parkingRepository.checkAvailability(parkingLotId, vehicleTypeId, startTime, endTime)) {
+                is Result.Success -> _availability.update { it.copy(isChecking = false, check = result.data) }
+                is Result.Error -> _availability.update { it.copy(isChecking = false, check = null, error = result.message) }
+                else -> {}
+            }
+        }
+    }
+
+    fun resetAvailabilityCheck() {
+        lastCheckSignature = null
+        _availability.value = AvailabilityCheckUiState()
+    }
 
     // Última pestaña consultada, para recargar la misma después de cancelar
     private var lastStatus: String? = null
@@ -80,6 +120,20 @@ class ReservationViewModel(
                     _uiState.update {
                         it.copy(successMessage = "Reserva cancelada", cancelledReservationId = id)
                     }
+                    loadReservations(lastStatus)
+                }
+                is Result.Error -> _uiState.update { it.copy(error = result.message) }
+                else -> {}
+            }
+        }
+    }
+
+    /** Califica una reserva completada (1-5 estrellas). */
+    fun rateReservation(id: Long, rating: Int, comment: String? = null) {
+        viewModelScope.launch {
+            when (val result = reservationRepository.rateReservation(id, rating, comment)) {
+                is Result.Success -> {
+                    _uiState.update { it.copy(successMessage = "¡Gracias por tu calificación!") }
                     loadReservations(lastStatus)
                 }
                 is Result.Error -> _uiState.update { it.copy(error = result.message) }

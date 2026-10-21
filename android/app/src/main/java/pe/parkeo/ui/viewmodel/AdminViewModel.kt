@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import pe.parkeo.data.remote.dto.AdminStatisticsDto
 import pe.parkeo.data.remote.dto.ParkingLotDto
+import pe.parkeo.data.remote.dto.ReservationDto
 import pe.parkeo.data.remote.dto.UserDto
 import pe.parkeo.domain.repository.AdminRepository
 import pe.parkeo.util.Result
@@ -16,6 +17,10 @@ data class AdminUiState(
     val statistics: AdminStatisticsDto = AdminStatisticsDto(),
     val parkingLots: List<ParkingLotDto> = emptyList(),
     val users: List<UserDto> = emptyList(),
+    // Reservas globales (pestaña admin)
+    val adminReservations: List<ReservationDto> = emptyList(),
+    val isLoadingReservations: Boolean = false,
+    val reservationStatusFilter: String? = null,
     val error: String? = null,
     val successMessage: String? = null
 )
@@ -114,6 +119,21 @@ class AdminViewModel(
                 }
                 is Result.Error -> {
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun loadAdminReservations(status: String? = _uiState.value.reservationStatusFilter) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingReservations = true, error = null, reservationStatusFilter = status) }
+            when (val result = adminRepository.getReservations(status)) {
+                is Result.Success -> {
+                    _uiState.update { it.copy(isLoadingReservations = false, adminReservations = result.data) }
+                }
+                is Result.Error -> {
+                    _uiState.update { it.copy(isLoadingReservations = false, error = result.message) }
                 }
                 else -> {}
             }
