@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS vehicle_types (
 CREATE TABLE IF NOT EXISTS vehicles (
     id              BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
     user_id         BIGINT UNSIGNED  NOT NULL,
-    vehicle_type_id TINYINT UNSIGNED NOT NULL,
+    -- NULL permitido: el vehículo marcador "WALK-IN" (sin reserva previa) no tiene tipo
+    vehicle_type_id TINYINT UNSIGNED NULL,
     license_plate   VARCHAR(20)      NOT NULL,
     brand           VARCHAR(100)     NULL,
     model           VARCHAR(100)     NULL,

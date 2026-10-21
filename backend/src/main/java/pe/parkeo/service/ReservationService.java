@@ -21,6 +21,7 @@ import pe.parkeo.exception.ValidationException;
 import pe.parkeo.repository.*;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -40,15 +41,20 @@ public class ReservationService {
     private final ParkingLotRepository parkingLotRepository;
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
+    private final ParkingRatingRepository parkingRatingRepository;
     private final AvailabilityService availabilityService;
 
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
     private static final int MIN_MINUTES = 15;
     private static final int MAX_HOURS = 24;
     private static final int MAX_DAYS_AHEAD = 30;
+    /** Ventana para permitir check-in antes de la hora reservada. */
+    private static final int EARLY_CHECKIN_MINUTES = 30;
+    /** Tiempo de gracia para cancelar (el check-in abrió la ventana). */
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     /**
-     * Crea una reserva.
+     * Crea una reserva confirmada (no existe pago, la confirmación es inmediata).
      *  - Si viene parkingSpaceId: usa ese espacio.
      *  - Si NO viene parkingSpaceId pero sí parkingLotId: asigna un espacio libre automáticamente.
      *
@@ -95,7 +101,7 @@ public class ReservationService {
             throw new ValidationException("No hay tarifa para este tipo de vehículo en este estacionamiento");
         }
 
-        // 7. Guardar
+        // 7. Guardar (auto-confirmada: el espacio queda bloqueado por horario)
         Reservation reservation = Reservation.builder()
                 .user(user)
                 .parkingSpace(space)
@@ -103,7 +109,7 @@ public class ReservationService {
                 .parkingLot(lot)
                 .startTime(start)
                 .endTime(end)
-                .status(ReservationStatus.PENDING)
+                .status(ReservationStatus.CONFIRMED)
                 .totalAmount(totalAmount)
                 .currency("PEN")
                 .confirmationCode(generateConfirmationCode())
@@ -115,6 +121,75 @@ public class ReservationService {
                 reservation.getConfirmationCode(), userId, space.getId());
 
         return mapToResponse(reservation);
+    }
+
+    /**
+     * Walk-in: el operador registra un ingreso de un vehículo sin reserva previa.
+     * Crea una reserva ACTIVE interna propiedad del operador para poder
+     * cobrar y liberar el espacio al check-out.
+     */
+    @Transactional
+    public ReservationDetailResponse createWalkIn(Long parkingLotId, Long vehicleTypeId,
+                                                  Long requestedSpaceId, Long operatorId, String notes) {
+        ParkingLot lot = parkingLotRepository.findById(parkingLotId)
+                .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", parkingLotId));
+        if (!Boolean.TRUE.equals(lot.getIsActive()) || !Boolean.TRUE.equals(lot.getIsOpen())) {
+            throw new ValidationException("El estacionamiento no está disponible en este momento");
+        }
+        if (vehicleTypeId == null) {
+            throw new ValidationException("El tipo de vehículo es requerido");
+        }
+
+        User operator = userRepository.findById(operatorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario", operatorId));
+
+        // Vehículo marcador único global del sistema para walk-ins
+        Vehicle walkInVehicle = vehicleRepository.findByLicensePlateAndIsActiveTrue("WALK-IN")
+                .orElseGet(() -> vehicleRepository.save(Vehicle.builder()
+                        .user(operator)
+                        .licensePlate("WALK-IN")
+                        .brand("Vehículo sin reserva")
+                        .isActive(true)
+                        .vehicleType(null)
+                        .build()));
+
+        LocalDateTime now = LocalDateTime.now(LIMA)
+                .truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+        LocalDateTime provisionalEnd = now.plusHours(1);
+
+        ParkingSpace space;
+        if (requestedSpaceId != null) {
+            space = lockAndCheckSpace(requestedSpaceId, vehicleTypeId, now, provisionalEnd);
+        } else {
+            space = assignFreeSpace(parkingLotId, vehicleTypeId, now, provisionalEnd);
+        }
+        ParkingLot walkInLot = space.getParkingLot();
+        if (!walkInLot.getId().equals(parkingLotId)) {
+            throw new ValidationException("El espacio elegido no pertenece a este estacionamiento");
+        }
+
+        Reservation reservation = Reservation.builder()
+                .user(operator)
+                .parkingSpace(space)
+                .vehicle(walkInVehicle)
+                .parkingLot(walkInLot)
+                .startTime(now)
+                .endTime(provisionalEnd)
+                .status(ReservationStatus.ACTIVE)
+                .totalAmount(BigDecimal.ZERO)
+                .currency("PEN")
+                .confirmationCode(generateConfirmationCode())
+                .notes(("WALK-IN" + (notes != null && !notes.isBlank() ? " — " + notes : "")))
+                .checkedInAt(now)
+                .build();
+
+        reservation = reservationRepository.save(reservation);
+        space.setStatus(SpaceStatus.OCCUPIED);
+        parkingSpaceRepository.save(space);
+        refreshAvailableSpaces(walkInLot);
+        log.info("Walk-in created {} by operator {} in lot {}", reservation.getConfirmationCode(), operatorId, parkingLotId);
+
+        return mapToDetailResponse(reservation);
     }
 
     // ─── Helpers de creación ──────────────────────────────────────────────────
@@ -185,36 +260,31 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public Page<ReservationResponse> getMyReservations(Long userId, String statusParam, Pageable pageable) {
-        if (statusParam == null || statusParam.isBlank()) {
+        List<ReservationStatus> statuses = parseStatuses(statusParam);
+        if (statuses == null || statuses.isEmpty()) {
+            if (statusParam != null && !statusParam.isBlank()) {
+                throw new ValidationException("Estado inválido: " + statusParam);
+            }
             return reservationRepository.findByUserId(userId, pageable).map(this::mapToResponse);
         }
+        return reservationRepository.findByUserIdAndStatusIn(userId, statuses, pageable).map(this::mapToResponse);
+    }
 
-        List<ReservationStatus> statuses = Arrays.stream(statusParam.split(","))
+    private List<ReservationStatus> parseStatuses(String statusParam) {
+        if (statusParam == null || statusParam.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(statusParam.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(s -> {
                     try {
                         return ReservationStatus.valueOf(s.toUpperCase());
                     } catch (IllegalArgumentException e) {
-                        return null;
+                        throw new ValidationException("Estado inválido: " + s);
                     }
                 })
-                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-
-        if (statuses.isEmpty()) {
-            return reservationRepository.findByUserId(userId, pageable).map(this::mapToResponse);
-        }
-
-        return reservationRepository.findByUserIdAndStatusIn(userId, statuses, pageable).map(this::mapToResponse);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<ReservationResponse> getMyReservations(Long userId, ReservationStatus status, Pageable pageable) {
-        Page<Reservation> reservations = (status != null)
-                ? reservationRepository.findByUserIdAndStatus(userId, status, pageable)
-                : reservationRepository.findByUserId(userId, pageable);
-        return reservations.map(this::mapToResponse);
     }
 
     @Transactional(readOnly = true)
@@ -228,6 +298,20 @@ public class ReservationService {
                     .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
         }
         return mapToDetailResponse(reservation);
+    }
+
+    /** Búsqueda por código de confirmación (operador en puerta). */
+    @Transactional(readOnly = true)
+    public Reservation getReservationByCode(String confirmationCode) {
+        String code = confirmationCode == null ? "" : confirmationCode.trim().toUpperCase();
+        return reservationRepository.findByConfirmationCode(code)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva", "código", confirmationCode));
+    }
+
+    /** Detalle completo de una reserva por código, para el flujo del operador. */
+    @Transactional(readOnly = true)
+    public ReservationDetailResponse getReservationDetailByCode(String confirmationCode) {
+        return mapToDetailResponse(getReservationByCode(confirmationCode));
     }
 
     // ─── Cancelar ─────────────────────────────────────────────────────────────
@@ -245,9 +329,16 @@ public class ReservationService {
                             + reservation.getStatus() + ")");
         }
 
+        // Política: solo hasta la hora de inicio. Después, el operador marca no-show.
+        if (!LocalDateTime.now(LIMA).isBefore(reservation.getStartTime())) {
+            throw new ValidationException(
+                    "Ya no puedes cancelar: la hora de inicio de tu reserva ha pasado. " +
+                            "Si no vas a asistir, el operador marcará la reserva como no-show.");
+        }
+
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancelledAt(LocalDateTime.now(LIMA));
-        reservation.setCancellationReason(reason);
+        reservation.setCancellationReason((reason == null || reason.isBlank()) ? "Cancelada por el cliente" : reason);
 
         reservation = reservationRepository.save(reservation);
         log.info("Reservation {} cancelled by user {}", reservationId, userId);
@@ -274,25 +365,36 @@ public class ReservationService {
                             + reservation.getStatus() + ")");
         }
 
+        // Ventana de check-in: máximo 30 min antes de la hora reservada
+        validateCheckInWindow(reservation);
+
         reservation.setStatus(ReservationStatus.ACTIVE);
         reservation.setCheckedInAt(LocalDateTime.now(LIMA));
 
-        // Actualizar estado del espacio a OCCUPIED
         ParkingSpace space = reservation.getParkingSpace();
         if (space != null) {
             space.setStatus(SpaceStatus.OCCUPIED);
             parkingSpaceRepository.save(space);
         }
-
-        // Decrementar espacios disponibles en la cochera si es mayor a 0
-        if (lot != null && lot.getAvailableSpaces() != null && lot.getAvailableSpaces() > 0) {
-            lot.setAvailableSpaces(lot.getAvailableSpaces() - 1);
-            parkingLotRepository.save(lot);
+        if (lot != null) {
+            refreshAvailableSpaces(lot);
         }
 
         reservation = reservationRepository.save(reservation);
         log.info("Reservation {} checked-in by operator {}", reservationId, operatorId);
         return mapToResponse(reservation);
+    }
+
+    private void validateCheckInWindow(Reservation reservation) {
+        LocalDateTime now = LocalDateTime.now(LIMA);
+        LocalDateTime earliest = reservation.getStartTime().minusMinutes(EARLY_CHECKIN_MINUTES);
+        if (now.isBefore(earliest)) {
+            java.time.Duration diff = Duration.between(now, earliest);
+            long mins = Math.max(1, (diff.toSeconds() + 59) / 60);
+            throw new ValidationException(
+                    "Aún es muy temprano para registrar el ingreso. Puedes hacer check-in desde las "
+                            + earliest.toLocalTime() + " (en unos " + mins + " min).");
+        }
     }
 
     @Transactional
@@ -312,8 +414,33 @@ public class ReservationService {
                             + reservation.getStatus() + ")");
         }
 
+        LocalDateTime now = LocalDateTime.now(LIMA);
         reservation.setStatus(ReservationStatus.COMPLETED);
-        reservation.setCheckedOutAt(LocalDateTime.now(LIMA));
+        reservation.setCheckedOutAt(now);
+
+        // Monto final: precio del tiempo real en cochera (check-in → check-out)
+        try {
+            Vehicle vehicle = reservation.getVehicle();
+            Long vehicleTypeId = (vehicle != null && vehicle.getVehicleType() != null)
+                    ? vehicle.getVehicleType().getId() : null;
+            if (vehicleTypeId == null) {
+                // Walk-ins: el vehículo marcador no tiene tipo; se usa el del espacio
+                // asignado (siempre coincide con el tipo registrado por el operador).
+                ParkingSpace spaceForPrice = reservation.getParkingSpace();
+                if (spaceForPrice != null && spaceForPrice.getVehicleType() != null) {
+                    vehicleTypeId = spaceForPrice.getVehicleType().getId();
+                }
+            }
+            LocalDateTime from = reservation.getCheckedInAt() != null ? reservation.getCheckedInAt() : reservation.getStartTime();
+            if (vehicleTypeId != null && from.isBefore(now)) {
+                BigDecimal finalAmount = availabilityService.calculatePrice(lot.getId(), vehicleTypeId, from, now);
+                if (finalAmount != null && finalAmount.signum() > 0) {
+                    reservation.setTotalAmount(finalAmount);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("No se pudo recalcular el monto final de la reserva {}: {}", reservationId, ex.getMessage());
+        }
 
         // Liberar el espacio a AVAILABLE
         ParkingSpace space = reservation.getParkingSpace();
@@ -321,19 +448,48 @@ public class ReservationService {
             space.setStatus(SpaceStatus.AVAILABLE);
             parkingSpaceRepository.save(space);
         }
-
-        // Incrementar espacios disponibles en la cochera
-        if (lot != null && lot.getAvailableSpaces() != null) {
-            int total = (lot.getTotalSpaces() != null) ? lot.getTotalSpaces() : 999;
-            if (lot.getAvailableSpaces() < total) {
-                lot.setAvailableSpaces(lot.getAvailableSpaces() + 1);
-                parkingLotRepository.save(lot);
-            }
+        if (lot != null) {
+            refreshAvailableSpaces(lot);
         }
 
         reservation = reservationRepository.save(reservation);
-        log.info("Reservation {} checked-out by operator {}", reservationId, operatorId);
+        log.info("Reservation {} checked-out by operator {} final amount {}",
+                reservationId, operatorId, reservation.getTotalAmount());
         return mapToResponse(reservation);
+    }
+
+    /**
+     * Fuente única de verdad para el cupo visible: cuenta los espacios
+     * en estado AVAILABLE de la cochera. Elimina el drift del contador.
+     */
+    private void refreshAvailableSpaces(ParkingLot lot) {
+        long available = parkingSpaceRepository.countAvailableByParkingLotId(lot.getId());
+        lot.setAvailableSpaces((int) Math.min(available, Integer.MAX_VALUE));
+    }
+
+    // ─── Ratings ──────────────────────────────────────────────────────────────
+
+    @Transactional
+    public void rateReservation(Long reservationId, Long userId, int rating, String comment) {
+        if (rating < 1 || rating > 5) {
+            throw new ValidationException("La calificación debe ser de 1 a 5");
+        }
+        Reservation reservation = reservationRepository.findByIdAndUserId(reservationId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva", reservationId));
+        if (reservation.getStatus() != ReservationStatus.COMPLETED) {
+            throw new ValidationException("Solo se pueden calificar reservas completadas");
+        }
+        if (parkingRatingRepository.existsByReservationId(reservationId)) {
+            throw new ConflictException("Ya calificaste esta reserva");
+        }
+        parkingRatingRepository.save(ParkingRating.builder()
+                .reservation(reservation)
+                .user(reservation.getUser())
+                .parkingLot(reservation.getParkingLot())
+                .rating(rating)
+                .comment(comment)
+                .build());
+        log.info("Reservation {} rated {} by user {}", reservationId, rating, userId);
     }
 
     @Transactional(readOnly = true)
@@ -341,6 +497,13 @@ public class ReservationService {
         return (status != null)
                 ? reservationRepository.findByParkingLotIdAndStatus(parkingLotId, status, pageable).map(this::mapToResponse)
                 : reservationRepository.findByParkingLotId(parkingLotId, pageable).map(this::mapToResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReservationResponse> getAllReservations(ReservationStatus status, Pageable pageable) {
+        return (status != null)
+                ? reservationRepository.findByStatus(status, pageable).map(this::mapToResponse)
+                : reservationRepository.findAll(pageable).map(this::mapToResponse);
     }
 
     // ─── Mapping ──────────────────────────────────────────────────────────────
@@ -413,6 +576,22 @@ public class ReservationService {
     }
 
     private String generateConfirmationCode() {
-        return "PKO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        // 3 intentos con sufijo aleatorio para evitar colisiones del UNIQUE
+        for (int attempt = 0; attempt < 3; attempt++) {
+            String candidate = "PKO-" + randomCode();
+            if (reservationRepository.findByConfirmationCode(candidate).isEmpty()) {
+                return candidate;
+            }
+        }
+        return "PKO-" + UUID.randomUUID().toString().substring(0, 10).toUpperCase();
+    }
+
+    private String randomCode() {
+        final String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        char[] chars = new char[7];
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = alphabet.charAt(RANDOM.nextInt(alphabet.length()));
+        }
+        return new String(chars);
     }
 }

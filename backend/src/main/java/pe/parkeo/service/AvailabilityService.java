@@ -109,7 +109,10 @@ public class AvailabilityService {
     }
 
     /**
-     * Calcula el precio total de una reserva según las tarifas aplicables (HOURLY, DAILY, FIXED).
+     * Calcula el precio total de una reserva según las tarifas activas.
+     * Soporta HOURLY (por hora con techo), DAILY (ceil de horas/24),
+     * WEEKLY, MONTHLY y FIXED, con límites min_hours / max_hours.
+     * Entre varias tarifas aplicables elige la más conveniente para el cliente.
      */
     @Transactional(readOnly = true)
     public BigDecimal calculatePrice(Long parkingLotId, Long vehicleTypeId,
@@ -128,33 +131,55 @@ public class AvailabilityService {
             return BigDecimal.ZERO;
         }
 
-        Duration duration = Duration.between(startTime, endTime);
-        long totalMinutes = duration.toMinutes();
+        long totalMinutes = Math.max(0, Duration.between(startTime, endTime).toMinutes());
         double hours = totalMinutes / 60.0;
 
-        // Tarifa por hora
+        BigDecimal best = null;
         for (Tariff tariff : tariffs) {
-            if (tariff.getTariffType() == TariffType.HOURLY) {
-                return tariff.getPrice().multiply(BigDecimal.valueOf(Math.ceil(hours)));
+            BigDecimal candidate = priceForTariff(tariff, hours);
+            if (candidate != null && candidate.signum() > 0
+                    && (best == null || candidate.compareTo(best) < 0)) {
+                best = candidate;
             }
         }
 
-        // Tarifa diaria
-        for (Tariff tariff : tariffs) {
-            if (tariff.getTariffType() == TariffType.DAILY) {
-                long days = Math.max(1, duration.toDays());
+        return best != null ? best : BigDecimal.ZERO;
+    }
+
+    private BigDecimal priceForTariff(Tariff tariff, double hours) {
+        Integer minHours = tariff.getMinHours();
+        Integer maxHours = tariff.getMaxHours();
+
+        switch (tariff.getTariffType()) {
+            case HOURLY: {
+                long billed = (long) Math.ceil(hours);
+                if (minHours != null && billed < minHours) billed = minHours;
+                if (maxHours != null && billed > maxHours) billed = maxHours;
+                if (billed <= 0) billed = 1;
+                return tariff.getPrice().multiply(BigDecimal.valueOf(billed));
+            }
+            case DAILY: {
+                long days = Math.max(1, (long) Math.ceil(hours / 24.0));
                 return tariff.getPrice().multiply(BigDecimal.valueOf(days));
             }
-        }
-
-        // Tarifa fija
-        for (Tariff tariff : tariffs) {
-            if (tariff.getTariffType() == TariffType.FIXED) {
+            case WEEKLY: {
+                long weeks = Math.max(1, (long) Math.ceil(hours / (24.0 * 7)));
+                return tariff.getPrice().multiply(BigDecimal.valueOf(weeks));
+            }
+            case MONTHLY: {
+                long months = Math.max(1, (long) Math.ceil(hours / (24.0 * 30)));
+                return tariff.getPrice().multiply(BigDecimal.valueOf(months));
+            }
+            case FIXED: {
+                // Tarifa fija aplica solo si la estadía cabe en su ventana (si define max_hours)
+                if (maxHours != null && hours > maxHours) {
+                    return null;
+                }
                 return tariff.getPrice();
             }
+            default:
+                return null;
         }
-
-        return BigDecimal.ZERO;
     }
 
     // ─── Helpers de apoyo ──────────────────────────────────────────────────────

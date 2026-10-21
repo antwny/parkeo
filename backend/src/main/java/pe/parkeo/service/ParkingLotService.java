@@ -10,7 +10,9 @@ import pe.parkeo.dto.response.ParkingLotResponse;
 import pe.parkeo.entity.ParkingLot;
 import pe.parkeo.entity.Schedule;
 import pe.parkeo.entity.Tariff;
+import pe.parkeo.enums.RoleName;
 import pe.parkeo.exception.ResourceNotFoundException;
+import pe.parkeo.exception.ValidationException;
 import pe.parkeo.repository.ParkingLotRepository;
 import pe.parkeo.entity.User;
 import pe.parkeo.repository.ScheduleRepository;
@@ -88,8 +90,19 @@ public class ParkingLotService {
         ParkingLot lot = parkingLotRepository.findById(lotId)
                 .orElseThrow(() -> new ResourceNotFoundException("Estacionamiento", lotId));
         if (operatorId != null) {
-            User operator = userRepository.findById(operatorId)
+            User operator = userRepository.findByIdWithRoles(operatorId)
                     .orElseThrow(() -> new ResourceNotFoundException("Usuario Operador", operatorId));
+
+            boolean isOperator = operator.getRoles().stream()
+                    .anyMatch(r -> r.getName() == RoleName.ROLE_OPERATOR);
+            if (!isOperator) {
+                throw new ValidationException(
+                        "El usuario seleccionado no tiene el rol de Operador. "
+                                + "Asígnale el rol antes de asignarle una cochera.");
+            }
+            if (!Boolean.TRUE.equals(operator.getIsActive())) {
+                throw new ValidationException("El usuario operador está desactivado");
+            }
             lot.setOperator(operator);
         } else {
             lot.setOperator(null);

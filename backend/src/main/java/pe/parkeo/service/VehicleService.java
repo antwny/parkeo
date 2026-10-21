@@ -11,6 +11,7 @@ import pe.parkeo.entity.Vehicle;
 import pe.parkeo.entity.VehicleType;
 import pe.parkeo.exception.ConflictException;
 import pe.parkeo.exception.ResourceNotFoundException;
+import pe.parkeo.repository.ReservationRepository;
 import pe.parkeo.repository.UserRepository;
 import pe.parkeo.repository.VehicleRepository;
 import pe.parkeo.repository.VehicleTypeRepository;
@@ -25,6 +26,7 @@ public class VehicleService {
     private final VehicleRepository vehicleRepository;
     private final VehicleTypeRepository vehicleTypeRepository;
     private final UserRepository userRepository;
+    private final ReservationRepository reservationRepository;
 
     @Transactional(readOnly = true)
     public List<VehicleResponse> getMyVehicles(Long userId) {
@@ -84,6 +86,22 @@ public class VehicleService {
     public void deleteVehicle(Long userId, Long vehicleId) {
         Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehículo", vehicleId));
+
+        long upcoming = reservationRepository.countByVehicleIdAndStatusInAndStartTimeAfter(
+                vehicleId,
+                List.of(
+                        pe.parkeo.enums.ReservationStatus.PENDING,
+                        pe.parkeo.enums.ReservationStatus.CONFIRMED,
+                        pe.parkeo.enums.ReservationStatus.ACTIVE
+                ),
+                java.time.LocalDateTime.now()
+        );
+        if (upcoming > 0) {
+            throw new ConflictException(
+                    "No puedes eliminar este vehículo: tiene " + upcoming
+                            + " reserva(s) próxima(s). Cancela las reservas primero.");
+        }
+
         vehicle.setIsActive(false);
         vehicleRepository.save(vehicle);
     }
@@ -114,10 +132,11 @@ public class VehicleService {
     }
 
     private VehicleResponse mapToResponse(Vehicle vehicle) {
+        // El vehículo marcador "WALK-IN" puede no tener tipo asociado
         return VehicleResponse.builder()
                 .id(vehicle.getId())
-                .vehicleTypeId(vehicle.getVehicleType().getId())
-                .vehicleTypeName(vehicle.getVehicleType().getName())
+                .vehicleTypeId(vehicle.getVehicleType() != null ? vehicle.getVehicleType().getId() : null)
+                .vehicleTypeName(vehicle.getVehicleType() != null ? vehicle.getVehicleType().getName() : null)
                 .licensePlate(vehicle.getLicensePlate())
                 .brand(vehicle.getBrand())
                 .model(vehicle.getModel())

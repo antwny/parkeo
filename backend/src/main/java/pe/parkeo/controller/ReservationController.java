@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import pe.parkeo.dto.request.CreateRatingRequest;
 import pe.parkeo.dto.request.CreateReservationRequest;
 import pe.parkeo.dto.response.ApiResponse;
 import pe.parkeo.dto.response.ReservationDetailResponse;
@@ -20,6 +21,7 @@ import pe.parkeo.dto.response.ReservationResponse;
 import pe.parkeo.entity.User;
 import pe.parkeo.exception.ResourceNotFoundException;
 import pe.parkeo.repository.UserRepository;
+import pe.parkeo.service.AuditService;
 import pe.parkeo.service.ReservationService;
 
 import java.util.Map;
@@ -32,6 +34,7 @@ public class ReservationController {
 
     private final ReservationService reservationService;
     private final UserRepository userRepository;
+    private final AuditService auditService;
 
     @GetMapping
     @Operation(summary = "Obtener mis reservas")
@@ -64,6 +67,9 @@ public class ReservationController {
         
         Long userId = resolveUserId(userDetails);
         ReservationResponse response = reservationService.createReservation(request, userId);
+
+        User user = userRepository.findById(userId).orElse(null);
+        auditService.log(user, "RESERVATION_CREATED", "reservation", response.getId(), null);
         
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Reserva creada exitosamente", response));
@@ -79,8 +85,23 @@ public class ReservationController {
         Long userId = resolveUserId(userDetails);
         String reason = (body != null) ? body.get("reason") : null;
         ReservationResponse response = reservationService.cancelReservation(id, userId, reason);
+
+        User user = userRepository.findById(userId).orElse(null);
+        auditService.log(user, "RESERVATION_CANCELLED", "reservation", id, reason);
         
         return ResponseEntity.ok(ApiResponse.ok("Reserva cancelada", response));
+    }
+
+    @PostMapping("/{id}/rating")
+    @Operation(summary = "Calificar una reserva completada (1-5 estrellas)")
+    public ResponseEntity<ApiResponse<Void>> rateReservation(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id,
+            @Valid @RequestBody CreateRatingRequest request) {
+
+        Long userId = resolveUserId(userDetails);
+        reservationService.rateReservation(id, userId, request.getRating(), request.getComment());
+        return ResponseEntity.ok(ApiResponse.ok("¡Gracias por tu calificación!", null));
     }
 
     private Long resolveUserId(UserDetails userDetails) {

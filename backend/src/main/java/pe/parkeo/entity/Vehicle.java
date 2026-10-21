@@ -27,8 +27,9 @@ public class Vehicle {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "vehicle_type_id", nullable = false)
+    // LAZY + nullable: el vehículo marcador "WALK-IN" no tiene tipo asociado
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_type_id")
     private VehicleType vehicleType;
 
     @Column(name = "license_plate", nullable = false, length = 20)

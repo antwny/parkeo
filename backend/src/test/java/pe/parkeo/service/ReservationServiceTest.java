@@ -36,6 +36,7 @@ class ReservationServiceTest {
     @Mock ParkingLotRepository parkingLotRepository;
     @Mock VehicleRepository vehicleRepository;
     @Mock UserRepository userRepository;
+    @Mock ParkingRatingRepository parkingRatingRepository;
     @Mock AvailabilityService availabilityService;
 
     @InjectMocks
@@ -108,7 +109,7 @@ class ReservationServiceTest {
     }
 
     @Test
-    @DisplayName("createReservation: debe crear reserva exitosamente")
+    @DisplayName("createReservation: debe crear reserva auto-confirmada exitosamente")
     void createReservation_shouldSucceed() {
         CreateReservationRequest request = CreateReservationRequest.builder()
                 .parkingSpaceId(1L)
@@ -125,7 +126,7 @@ class ReservationServiceTest {
                 .parkingLot(parkingLot)
                 .startTime(startTime)
                 .endTime(endTime)
-                .status(ReservationStatus.PENDING)
+                .status(ReservationStatus.CONFIRMED)
                 .totalAmount(new BigDecimal("20.00"))
                 .currency("PEN")
                 .confirmationCode("PKO-ABC12345")
@@ -144,7 +145,7 @@ class ReservationServiceTest {
         ReservationResponse response = reservationService.createReservation(request, 1L);
 
         assertThat(response).isNotNull();
-        assertThat(response.getStatus()).isEqualTo("PENDING");
+        assertThat(response.getStatus()).isEqualTo("CONFIRMED");
         assertThat(response.getTotalAmount()).isEqualByComparingTo("20.00");
         verify(reservationRepository).save(any(Reservation.class));
     }
@@ -225,16 +226,18 @@ class ReservationServiceTest {
                 .parkingSpace(parkingSpace)
                 .parkingLot(parkingLot)
                 .vehicle(vehicle)
-                .startTime(startTime)
+                .startTime(LocalDateTime.now().plusMinutes(5)) // dentro de la ventana de check-in
                 .endTime(endTime)
-                .status(ReservationStatus.PENDING)
+                .status(ReservationStatus.CONFIRMED)
                 .confirmationCode("PKO-CHECKIN1")
                 .totalAmount(new BigDecimal("15.00"))
                 .currency("PEN")
                 .build();
 
         when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reservationRepository.save(any(Reservation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(parkingSpaceRepository.countAvailableByParkingLotId(1L)).thenReturn(9L);
 
         ReservationResponse response = reservationService.checkInReservation(10L, 2L);
 
@@ -242,6 +245,27 @@ class ReservationServiceTest {
         assertThat(response.getStatus()).isEqualTo("ACTIVE");
         assertThat(parkingSpace.getStatus()).isEqualTo(SpaceStatus.OCCUPIED);
         assertThat(parkingLot.getAvailableSpaces()).isEqualTo(9);
+    }
+
+    @Test
+    @DisplayName("checkInReservation: debe rechazar el ingreso cuando aún es muy temprano")
+    void checkInReservation_shouldReject_whenTooEarly() {
+        Reservation reservation = Reservation.builder()
+                .id(10L)
+                .user(user)
+                .parkingSpace(parkingSpace)
+                .parkingLot(parkingLot)
+                .vehicle(vehicle)
+                .startTime(LocalDateTime.now().plusHours(2)) // ventana abre en 90 min
+                .endTime(endTime)
+                .status(ReservationStatus.CONFIRMED)
+                .build();
+
+        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.checkInReservation(10L, 2L))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("muy temprano");
     }
 
     @Test
@@ -253,7 +277,7 @@ class ReservationServiceTest {
                 .parkingSpace(parkingSpace)
                 .parkingLot(parkingLot)
                 .vehicle(vehicle)
-                .startTime(startTime)
+                .startTime(LocalDateTime.now().plusMinutes(5))
                 .endTime(endTime)
                 .status(ReservationStatus.PENDING)
                 .build();
@@ -266,9 +290,65 @@ class ReservationServiceTest {
     }
 
     @Test
-    @DisplayName("checkOutReservation: debe registrar salida y liberar espacio a AVAILABLE")
+    @DisplayName("checkOutReservation: debe registrar salida, liberar espacio y fijar monto final")
     void checkOutReservation_shouldSucceed() {
         parkingSpace.setStatus(SpaceStatus.OCCUPIED);
+        Reservation reservation = Reservation.builder()
+                .id(10L)
+                .user(user)
+                .parkingSpace(parkingSpace)
+                .parkingLot(parkingLot)
+                .vehicle(vehicle)
+                .startTime(LocalDateTime.now().minusHours(2))
+                .endTime(LocalDateTime.now().plusMinutes(30))
+                .status(ReservationStatus.ACTIVE)
+                .confirmationCode("PKO-CHECKOUT1")
+                .checkedInAt(LocalDateTime.now().minusHours(2))
+                .totalAmount(new BigDecimal("15.00"))
+                .currency("PEN")
+                .build();
+
+        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.save(any(Reservation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(parkingSpaceRepository.countAvailableByParkingLotId(1L)).thenReturn(11L);
+        when(availabilityService.calculatePrice(eq(1L), eq(1L), any(), any()))
+                .thenReturn(new BigDecimal("18.00"));
+
+        ReservationResponse response = reservationService.checkOutReservation(10L, 2L);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatus()).isEqualTo("COMPLETED");
+        assertThat(parkingSpace.getStatus()).isEqualTo(SpaceStatus.AVAILABLE);
+        assertThat(parkingLot.getAvailableSpaces()).isEqualTo(11);
+        assertThat(response.getTotalAmount()).isEqualByComparingTo("18.00");
+    }
+
+    @Test
+    @DisplayName("cancelReservation: debe rechazar cancelar cuando la hora de inicio ya pasó")
+    void cancelReservation_shouldReject_whenStartPassed() {
+        Reservation reservation = Reservation.builder()
+                .id(10L)
+                .user(user)
+                .parkingSpace(parkingSpace)
+                .parkingLot(parkingLot)
+                .vehicle(vehicle)
+                .startTime(LocalDateTime.now().minusMinutes(30)) // ya pasó
+                .endTime(LocalDateTime.now().plusHours(1))
+                .status(ReservationStatus.CONFIRMED)
+                .confirmationCode("PKO-CANCEL1")
+                .build();
+
+        when(reservationRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.cancelReservation(10L, 1L, "No voy a ir"))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Ya no puedes cancelar");
+    }
+
+    @Test
+    @DisplayName("rateReservation: debe rechazar calificar una reserva no completada")
+    void rateReservation_shouldReject_whenNotCompleted() {
         Reservation reservation = Reservation.builder()
                 .id(10L)
                 .user(user)
@@ -278,19 +358,13 @@ class ReservationServiceTest {
                 .startTime(startTime)
                 .endTime(endTime)
                 .status(ReservationStatus.ACTIVE)
-                .confirmationCode("PKO-CHECKOUT1")
-                .totalAmount(new BigDecimal("15.00"))
-                .currency("PEN")
+                .confirmationCode("PKO-RATE1")
                 .build();
 
-        when(reservationRepository.findById(10L)).thenReturn(Optional.of(reservation));
-        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reservationRepository.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(reservation));
 
-        ReservationResponse response = reservationService.checkOutReservation(10L, 2L);
-
-        assertThat(response).isNotNull();
-        assertThat(response.getStatus()).isEqualTo("COMPLETED");
-        assertThat(parkingSpace.getStatus()).isEqualTo(SpaceStatus.AVAILABLE);
-        assertThat(parkingLot.getAvailableSpaces()).isEqualTo(11);
+        assertThatThrownBy(() -> reservationService.rateReservation(10L, 1L, 5, null))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("completadas");
     }
 }

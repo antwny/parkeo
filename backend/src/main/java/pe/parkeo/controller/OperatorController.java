@@ -8,15 +8,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import pe.parkeo.dto.request.CreateWalkInRequest;
 import pe.parkeo.dto.request.UpdateSpaceStatusRequest;
 import pe.parkeo.dto.response.ApiResponse;
 import pe.parkeo.dto.response.ParkingLotResponse;
 import pe.parkeo.dto.response.ParkingSpaceResponse;
+import pe.parkeo.dto.response.ReservationDetailResponse;
 import pe.parkeo.dto.response.ReservationResponse;
 import pe.parkeo.entity.User;
 import pe.parkeo.enums.ReservationStatus;
@@ -24,6 +27,7 @@ import pe.parkeo.exception.ResourceNotFoundException;
 import pe.parkeo.exception.UnauthorizedException;
 import pe.parkeo.repository.ParkingSpaceRepository;
 import pe.parkeo.repository.UserRepository;
+import pe.parkeo.service.AuditService;
 import pe.parkeo.service.ParkingLotService;
 import pe.parkeo.service.ParkingSpaceService;
 import pe.parkeo.service.ReservationService;
@@ -42,6 +46,7 @@ public class OperatorController {
     private final ReservationService reservationService;
     private final UserRepository userRepository;
     private final ParkingSpaceRepository parkingSpaceRepository;
+    private final AuditService auditService;
 
     @GetMapping("/parking-lots")
     @Operation(summary = "Obtener estacionamientos asignados al operador")
@@ -79,6 +84,10 @@ public class OperatorController {
 
         ParkingSpaceResponse response = parkingSpaceService.updateSpaceStatus(
                 spaceId, request.getStatus(), request.getNotes());
+        Long operatorId = resolveUserId(userDetails);
+        User actor = userRepository.findById(operatorId).orElse(null);
+        auditService.log(actor, "SPACE_STATUS_CHANGE", "parking_space", spaceId,
+                request.getStatus() + (request.getNotes() != null ? " — " + request.getNotes() : ""));
         return ResponseEntity.ok(ApiResponse.ok("Estado actualizado", response));
     }
 
@@ -109,6 +118,9 @@ public class OperatorController {
             @PathVariable Long id) {
         Long operatorId = resolveUserId(userDetails);
         ReservationResponse response = reservationService.checkInReservation(id, operatorId);
+
+        User actor = userRepository.findById(operatorId).orElse(null);
+        auditService.log(actor, "RESERVATION_CHECK_IN", "reservation", id, null);
         return ResponseEntity.ok(ApiResponse.ok("Ingreso registrado exitosamente", response));
     }
 
@@ -119,7 +131,45 @@ public class OperatorController {
             @PathVariable Long id) {
         Long operatorId = resolveUserId(userDetails);
         ReservationResponse response = reservationService.checkOutReservation(id, operatorId);
+
+        User actor = userRepository.findById(operatorId).orElse(null);
+        auditService.log(actor, "RESERVATION_CHECK_OUT", "reservation", id, null);
         return ResponseEntity.ok(ApiResponse.ok("Salida registrada exitosamente", response));
+    }
+
+    // ─── Búsqueda por código (QR / boarding pass) ────────────────────────────
+    @GetMapping("/reservations/by-code/{code}")
+    @Operation(summary = "Buscar una reserva por código de confirmación (PKO-XXXXXXX)")
+    public ResponseEntity<ApiResponse<ReservationDetailResponse>> getByCode(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String code) {
+        ReservationDetailResponse detail = reservationService.getReservationDetailByCode(code);
+        // El operador solo ve reservas de sus cocheras (admin ve todo)
+        validateOperatorAccessToLot(userDetails, detail.getParkingLotId());
+        return ResponseEntity.ok(ApiResponse.ok(detail));
+    }
+
+    // ─── Walk-in: ingreso sin reserva previa ──────────────────────────────────
+    @PostMapping("/walk-ins")
+    @Operation(summary = "Registrar un vehículo walk-in (sin reserva) y ocupar un espacio")
+    public ResponseEntity<ApiResponse<ReservationDetailResponse>> createWalkIn(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody CreateWalkInRequest request) {
+        Long operatorId = resolveUserId(userDetails);
+        validateOperatorAccessToLot(userDetails, request.getParkingLotId());
+
+        ReservationDetailResponse response = reservationService.createWalkIn(
+                request.getParkingLotId(),
+                request.getVehicleTypeId(),
+                request.getParkingSpaceId(),
+                operatorId,
+                request.getNotes());
+
+        User actor = userRepository.findById(operatorId).orElse(null);
+        auditService.log(actor, "WALK_IN_CREATED", "reservation",
+                response.getId(), request.getNotes());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created("Ingreso walk-in registrado", response));
     }
 
     private Long resolveUserId(UserDetails userDetails) {

@@ -3,6 +3,7 @@ package pe.parkeo.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -18,6 +19,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import pe.parkeo.security.JwtAuthenticationFilter;
 import pe.parkeo.security.UserDetailsServiceImpl;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -71,6 +74,17 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/operator/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_OPERATOR")
                 .anyRequest().authenticated()
+            )
+            // 401 + WWW-Authenticate para que los clientes (OkHttp Authenticator)
+            // puedan refrescar el access token expirado automáticamente.
+            .exceptionHandling(e -> e
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write(
+                        "{\"success\":false,\"message\":\"Sesión expirada o inválida.\"}");
+                })
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

@@ -42,6 +42,7 @@ class AuthServiceTest {
     @Mock JwtTokenProvider jwtTokenProvider;
     @Mock AuthenticationManager authenticationManager;
     @Mock JwtConfig jwtConfig;
+    @Mock pe.parkeo.service.LoginRateLimiter loginRateLimiter;
 
     @InjectMocks
     AuthService authService;

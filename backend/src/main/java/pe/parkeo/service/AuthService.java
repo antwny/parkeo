@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -21,6 +22,7 @@ import pe.parkeo.entity.User;
 import pe.parkeo.enums.RoleName;
 import pe.parkeo.exception.ConflictException;
 import pe.parkeo.exception.ResourceNotFoundException;
+import pe.parkeo.exception.TooManyRequestsException;
 import pe.parkeo.exception.UnauthorizedException;
 import pe.parkeo.repository.RefreshTokenRepository;
 import pe.parkeo.repository.RoleRepository;
@@ -44,6 +46,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final pe.parkeo.config.JwtConfig jwtConfig;
+    private final LoginRateLimiter loginRateLimiter;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -74,12 +77,32 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        String emailKey = request.getEmail().trim().toLowerCase();
+
+        // Bloqueo por intentos fallidos (brute force)
+        if (loginRateLimiter.isBlocked(emailKey)) {
+            throw new TooManyRequestsException(
+                    "Demasiados intentos fallidos. Tu cuenta quedó bloqueada temporalmente; "
+                            + "inténtalo de nuevo en ~15 minutos.");
+        }
+
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (BadCredentialsException ex) {
+            loginRateLimiter.recordFailure(emailKey);
+            throw ex;
+        }
+        loginRateLimiter.reset(emailKey);
 
         User user = userRepository.findByEmailWithRoles(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario", "email", request.getEmail()));
+
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new UnauthorizedException("Tu cuenta está desactivada. Contacta al administrador.");
+        }
 
         // Update last login timestamp
         user.setLastLoginAt(LocalDateTime.now());
@@ -98,11 +121,18 @@ public class AuthService {
             throw new UnauthorizedException("El refresh token ha expirado o ha sido revocado");
         }
 
+        User user = refreshToken.getUser();
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            // El usuario fue desactivado: invalidar la sesión inmediatamente
+            refreshToken.setIsRevoked(true);
+            refreshTokenRepository.save(refreshToken);
+            throw new UnauthorizedException("Tu cuenta está desactivada. Contacta al administrador.");
+        }
+
         // Revoke old refresh token (rotation)
         refreshToken.setIsRevoked(true);
         refreshTokenRepository.save(refreshToken);
 
-        User user = refreshToken.getUser();
         log.info("Token refreshed for user: {}", user.getEmail());
         return generateAuthResponse(user);
     }

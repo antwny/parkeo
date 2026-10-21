@@ -27,8 +27,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     Optional<Reservation> findByIdAndUserId(Long id, Long userId);
 
-    Optional<Reservation> findByConfirmationCode(String confirmationCode);
-
     Page<Reservation> findByParkingLotId(Long parkingLotId, Pageable pageable);
 
     Page<Reservation> findByParkingLotIdAndStatus(Long parkingLotId, ReservationStatus status, Pageable pageable);
@@ -105,4 +103,29 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @Query("SELECT COUNT(r) FROM Reservation r WHERE r.parkingLot.operator.id = :operatorId")
     long countByOperatorId(@Param("operatorId") Long operatorId);
+
+    /**
+     * Reservas confirmadas/pendientes cuya hora de inicio ya pasó
+     * (para el job de NO_SHOW).
+     */
+    List<Reservation> findByStatusInAndStartTimeBefore(
+            List<ReservationStatus> statuses,
+            LocalDateTime startTimeBefore
+    );
+
+    /**
+     * Reservas activas (no terminadas) a futuro para un vehículo.
+     * Se usa para bloquear la eliminación de un vehículo con reservas próximas.
+     */
+    long countByVehicleIdAndStatusInAndStartTimeAfter(
+            Long vehicleId,
+            Collection<ReservationStatus> statuses,
+            LocalDateTime startTimeAfter
+    );
+
+    Optional<Reservation> findByConfirmationCode(String confirmationCode);
+
+    boolean existsByParkingSpaceIdAndStatus(Long parkingSpaceId, ReservationStatus status);
+
+    Page<Reservation> findByStatus(ReservationStatus status, Pageable pageable);
 }

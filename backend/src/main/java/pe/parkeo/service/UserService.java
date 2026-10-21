@@ -1,6 +1,8 @@
 package pe.parkeo.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,12 +71,47 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public Page<UserResponse> getAllUsers(Pageable pageable) {
+        return userRepository.findAll(pageable).map(authService::mapToUserResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> searchUsers(String search, Pageable pageable) {
+        String q = search.trim();
+        return userRepository.searchAll(q, pageable).map(authService::mapToUserResponse);
+    }
+
+    /**
+     * Activa/desactiva usuarios con reglas de protección:
+     *  - Un admin no puede desactivarse a sí mismo.
+     *  - No se puede desactivar al último administrador activo.
+     *  - Al desactivar, todas sus sesiones (refresh tokens) se revocan.
+     */
     @Transactional
-    public UserResponse setUserStatus(Long userId, boolean isActive) {
-        User user = userRepository.findByIdWithRoles(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario", userId));
-        user.setIsActive(isActive);
-        user = userRepository.save(user);
-        return authService.mapToUserResponse(user);
+    public UserResponse setUserStatus(Long currentAdminId, Long targetUserId, boolean isActive) {
+        User target = userRepository.findByIdWithRoles(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario", targetUserId));
+
+        boolean targetIsAdmin = target.getRoles().stream()
+                .anyMatch(r -> r.getName() == pe.parkeo.enums.RoleName.ROLE_ADMIN);
+
+        if (!isActive) {
+            if (currentAdminId != null && currentAdminId.equals(targetUserId)) {
+                throw new ValidationException("No puedes desactivar tu propia cuenta administrador");
+            }
+            if (targetIsAdmin && userRepository.countActiveAdmins() <= 1) {
+                throw new ValidationException(
+                        "No puedes desactivar al último administrador activo del sistema");
+            }
+        }
+
+        target.setIsActive(isActive);
+        target = userRepository.save(target);
+
+        if (!isActive) {
+            authService.logoutAll(targetUserId);
+        }
+        return authService.mapToUserResponse(target);
     }
 }
