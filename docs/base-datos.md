@@ -120,13 +120,15 @@ Vehículos de los usuarios.
 |---|---|---|
 | `id` | BIGINT UNSIGNED PK AI | |
 | `user_id` | BIGINT UNSIGNED FK → `users.id` (CASCADE) | |
-| `vehicle_type_id` | TINYINT UNSIGNED FK → `vehicle_types.id` | |
-| `license_plate` | VARCHAR(20) UNIQUE NOT NULL | Formato peruano |
+| `vehicle_type_id` | TINYINT UNSIGNED **NULL** FK → `vehicle_types.id` | **Nullable:** el vehículo marcador `WALK-IN` no tiene tipo; la relación es LAZY |
+| `license_plate` | VARCHAR(20) UNIQUE NOT NULL | Normalizada a mayúsculas; 6 caracteres → `ABC-123` |
 | `brand` / `model` | VARCHAR(100) | |
 | `color` | VARCHAR(50) | |
 | `year` | YEAR | |
 | `is_active` | BOOLEAN DEFAULT TRUE | |
 | `created_at` / `updated_at` | TIMESTAMP | |
+
+Existe un vehículo marcador global con placa `WALK-IN` (propio del operador que la usó por primera vez) que representa todos los ingresos sin reserva: su `vehicle_type_id` es `NULL` y no es visible como vehículo "normal" del usuario.
 
 ### 7. `parking_lots`
 
@@ -294,7 +296,7 @@ Registro de auditoría de acciones.
 | `user_agent` | VARCHAR(500) NULL |
 | `created_at` | TIMESTAMP |
 
-> La tabla existe y tiene datos de ejemplo, pero el backend actual todavía no escribe auditoría de forma automática.
+> La tabla existe y el backend ahora escribe en ella de forma automática: `AuditService` registra `RESERVATION_CHECK_IN`, `RESERVATION_CHECK_OUT`, `WALK_IN_CREATED` y `RESERVATION_CANCELLED` con el usuario que ejecuta la acción. El resto de operaciones (registro, cambios de perfil, administración) todavía no se auditan.
 
 ### 16. `operator_parking_assignments`
 
@@ -338,9 +340,33 @@ Restricción única: `(operator_id, parking_lot_id)`.
 | 5 | Parkeo Lince Express | Lince | 45 |
 | 6 | Parkeo San Borja Premium | San Borja | 90 |
 
-Totales del seed: **6 lotes, 410 espacios, 42 horarios, 54 tarifas, 6 reservas y 7 usuarios**.
+Totales del seed: **6 lotes, 410 espacios, 42 horarios, 54 tarifas, 6 reservas, 2 calificaciones y 7 usuarios**.
 
 `available_spaces` se recalcula al final de `data.sql` contando los espacios en estado `AVAILABLE`.
+
+### Estado actual de la BD de desarrollo (post-pruebas en dispositivo)
+
+Tras la verificación E2E sobre el seed, la BD local quedó con **8 usuarios, 12 reservas, 2 calificaciones y 10 vehículos** (incluido el marcador `WALK-IN`):
+
+| `id` | Reserva | Propietario | Cochera / espacio | Estado | Monto | Origen |
+|---|---|---|---|---|---|---|
+| 1–6 | `PKO-DEMO01…06` | seed | — | COMPLETED, NO_SHOW, CANCELLED, ACTIVE | 10–27 S/ | `data.sql` |
+| 7 | `PKO-958A4EA0` | cliente | San Borja Premium · A-55 (auto) | COMPLETED | 100.00 | Check-in + check-out desde la app del operador |
+| 8 | `PKO-EDJ32QY` | operador | Miraflores · A-40 (WALK-IN, sin tipo) | COMPLETED | 0.00 | Walk-in de referencia; checkout previo al cobro automático |
+| 9 | `PKO-JH9DQCT` | operador | Miraflores · A-40 (WALK-IN) | COMPLETED | 5.00 | Walk-in facturado: 1 h × tarifa AUTO de Miraflores (S/5.00) |
+| 10 | `PKO-B26ZT7V` | cliente | Miraflores · A-40 (auto) | NO_SHOW | 10.00 | creada desde la app; expiró sin check-in (15 min de gracia) |
+| 11 | `PKO-LHDVCTP` | cliente | Miraflores · M-08 (moto) | ACTIVE | 15.00 | check-in hecho desde la app del operador |
+| 12 | `PKO-2J8KF67` | `ikelowa02@gmail.com` (registrado en la app) | Surco · C-25 (camioneta) | CONFIRMED | 60.00 | creación de reserva desde la app |
+
+Notas del estado actual:
+
+- `operador2@parkeo.pe` quedó con **id 11** y el usuario de prueba `ikelowa02@gmail.com` con **id 12** (creado durante las pruebas en el dispositivo; su vehículo es la camioneta `ZEX-WR1`).
+- El vehículo marcador **`WALK-IN` (id 9)** tiene placa `WALK-IN` y `vehicle_type_id = NULL`; lo creó el backend en el primer ingreso sin reserva.
+- La reserva 10 evidencia el **job de expiración**: `CONFIRMED` → `NO_SHOW` automático pasados 15 min del inicio sin check-in.
+- Las 2 calificaciones provienen del seed (reservas 1 y 2).
+- Otras tablas vivas: 19 filas en `audit_log` (check-in/out, walk-in, cancelación), 9 en `refresh_tokens`, 16 en `status_history`.
+
+Para volver al estado limpio del seed: `bash scripts/reset-db.sh`.
 
 ### Tarifas por hora (S/)
 

@@ -64,11 +64,15 @@ docker compose up -d
 
 ### Credenciales locales usadas por los scripts
 
+`scripts/start-backend.sh` ya define todo lo necesario:
+
 ```
 Host: localhost
 Puerto: 3306
 Base de datos: parkeo_db
 Usuario: antwny
+Contraseña: 198009      (DB_PASSWORD del script)
+JWT_SECRET: parkeo-super-secret-key-change-in-production-min-256-bits-0123456789
 ```
 
 > ⚠️ Estas credenciales son de desarrollo. No las uses en producción.
@@ -177,11 +181,13 @@ Sin una API Key válida, el mapa no carga y la app muestra un mensaje de error.
 
 ### 5.4 URL del backend según el dispositivo
 
+La app lee `BACKEND_URL` en tiempo de compilación. Si `local.properties` no la define, el `build.gradle.kts` usa el fallback `http://10.146.116.216:8080/` (IP actual de esta máquina en la red local). Si tu IP cambia (WiFi nueva, DHCP), actualiza la variable o el fallback.
+
 | Dispositivo | `BACKEND_URL` |
 |---|---|
+| Celular físico en la misma red (uso actual) | `http://10.146.116.216:8080/` |
 | Emulador Android | `http://10.0.2.2:8080/` |
 | Celular físico con `adb reverse` | `http://localhost:8080/` |
-| Celular físico en la misma red | `http://IP_DE_TU_PC:8080/` |
 
 Para un celular conectado por USB:
 
@@ -191,7 +197,7 @@ bash scripts/levantar-celular.sh
 
 El script ejecuta `adb reverse tcp:8080 tcp:8080` y abre la app con `adb shell am start -n pe.parkeo/.MainActivity`.
 
-Asegúrate de que `BACKEND_URL` en `android/local.properties` apunte a `http://localhost:8080/` cuando uses `adb reverse`.
+Asegúrate de que `BACKEND_URL` en `android/local.properties` apunte a `http://localhost:8080/` cuando uses `adb reverse`. Con la URL de la red local (sin `adb reverse`) vale con que backend y teléfono estén en el mismo WiFi.
 
 ### 5.5 Compilar y ejecutar
 
@@ -237,8 +243,8 @@ Resultado esperado:
 ```
 lotes: 6
 espacios: 410
-reservas: 6
-usuarios: 7
+reservas: 12   (6 del seed + 6 creadas durante las pruebas E2E; tras reset-db: 6)
+usuarios: 8    (7 del seed + 1 registrado desde la app; tras reset-db: 7)
 ```
 
 ### API
@@ -261,8 +267,23 @@ Debe devolver `accessToken`, `refreshToken` y el usuario con rol `ROLE_USER`.
 
 ```bash
 cd backend
-mvn test
+mvn test | grep "Tests run"
 ```
+
+> `mvn -q test` **no imprime nada cuando todo pasa**; por eso conviene filtrar con `grep "Tests run"`. El estado al cierre: **19 pruebas** verdes (5 de `AuthControllerTest`, 4 de `AuthServiceTest`, 10 de `ReservationServiceTest`: solapamiento, walk-ins, billing de check-out, expiración, ratings).
+
+### Prueba en dispositivo físico (smoke test)
+
+El dispositivo USB usado en el desarrollo es el serial `15010044525445343203bef6f4065b` (Samsung A12, 720×1600).
+
+```bash
+adb devices                                   # confirmar serial
+cd android && ./gradlew installDebug          # compilar + instalar
+adb -s <serial> shell am force-stop pe.parkeo # reiniciar app
+adb -s <serial> exec-out screencap -p > shot.png  # captura de pantalla
+```
+
+Cuentas de demo para recorrer los tres roles: `cliente@parkeo.pe`, `operador@parkeo.pe` y `admin@parkeo.pe` (`Password123!`).
 
 ---
 

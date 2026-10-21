@@ -189,7 +189,7 @@ Content-Type: application/json
 }
 ```
 
-La placa debe cumplir el formato peruano `ABC-123` o `ABC123`.
+La placa se normaliza en el servidor: se quita todo lo que no sea letra o dígito, se pasa a mayúsculas y si quedan 6 caracteres se inserta el guion (`abc123` → `ABC-123`). `vehicleTypeId` es obligatorio para vehículos de usuario.
 
 ---
 
@@ -246,6 +246,7 @@ La respuesta incluye `isAvailable`, `totalHours`, `calculatedPrice`, `currency` 
 | `GET` | `/api/reservations/{id}` | Autenticado | Detalle de una reserva propia |
 | `POST` | `/api/reservations` | Autenticado | Crear reserva con verificación de cupo |
 | `PATCH` | `/api/reservations/{id}/cancel` | Autenticado | Cancelar reserva pendiente o confirmada |
+| `POST` | `/api/reservations/{id}/rating` | Autenticado | Calificar una reserva completada |
 
 #### Listar reservas
 
@@ -275,11 +276,12 @@ Se puede enviar `parkingSpaceId` en lugar de `parkingLotId` para elegir un espac
 
 Reglas principales:
 
-- Duración mínima: 15 minutos.
-- Duración máxima: 24 horas.
-- Reserva hasta con 30 días de anticipación.
-- El precio se calcula en el servidor a partir de las tarifas activas.
-- Se evita el solapamiento de reservas para un mismo espacio y vehículo.
+- La reserva se crea directamente en estado `CONFIRMED` (no queda en `PENDING`); el boarding pass con QR está disponible de inmediato.
+- Duración mínima: 15 minutos. Máxima: 24 horas.
+- Reserva hasta con 30 días de anticipación; la hora de inicio no puede haber pasado (tolerancia de 15 minutos hacia atrás) ni estar a más de 30 días.
+- El precio se calcula en el servidor a partir de las tarifas activas (`HOURLY`, `DAILY`, `WEEKLY`, `MONTHLY`, `FIXED`).
+- Se evita el solapamiento de reservas para un mismo espacio y vehículo (bloqueo pesimista del espacio).
+- El vehículo debe tener un tipo (`vehicleTypeId`) asociado; los vehículos sin tipo solo son válidos para el flujo interno de walk-ins.
 
 #### Cancelar reserva
 
@@ -290,6 +292,21 @@ Content-Type: application/json
 
 {
   "reason": "Cambio de planes"
+}
+```
+
+#### Calificar reserva
+
+Solo reservas en estado `COMPLETED` y del usuario autenticado. Una sola calificación por reserva; `rating` entre 1 y 5.
+
+```http
+POST /api/reservations/7/rating
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "comment": "Excelente servicio"
 }
 ```
 
@@ -305,8 +322,10 @@ Requiere `ROLE_OPERATOR` o `ROLE_ADMIN`.
 | `GET` | `/api/operator/parking-lots/{id}/spaces` | Espacios del estacionamiento |
 | `PATCH` | `/api/operator/spaces/{spaceId}/status` | Cambiar estado de un espacio |
 | `GET` | `/api/operator/reservations` | Reservas de un estacionamiento |
+| `GET` | `/api/operator/reservations/by-code/{code}` | Buscar una reserva por su código de confirmación |
 | `PATCH` | `/api/operator/reservations/{id}/check-in` | Registrar ingreso |
 | `PATCH` | `/api/operator/reservations/{id}/check-out` | Registrar salida |
+| `POST` | `/api/operator/walk-ins` | Registrar un ingreso sin reserva previa |
 
 #### Cambiar estado de espacio
 
@@ -331,6 +350,35 @@ GET /api/operator/reservations?parkingLotId=1&status=ACTIVE&page=0&size=20
 
 El parámetro `parkingLotId` es obligatorio. El operador solo puede acceder a estacionamientos asignados; el administrador puede acceder a todos.
 
+#### Búsqueda por código de confirmación
+
+```http
+GET /api/operator/reservations/by-code/PKO-B26ZT7V
+Authorization: Bearer <TOKEN>
+```
+
+Usado por la app del operador cuando el cliente llega escaneando/solo con su boarding pass. Devuelve el detalle completo (espacio, vehículo, horarios, montos). Se valida que la reserva pertenezca a una cochera asignada al operador (el administrador puede buscar en todas).
+
+#### Walk-in: ingreso sin reserva previa
+
+```http
+POST /api/operator/walk-ins
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+
+{
+  "parkingLotId": 1,
+  "vehicleTypeId": 1,
+  "parkingSpaceId": 1,
+  "notes": "Cliente de paso"
+}
+```
+
+- `parkingLotId` y `vehicleTypeId` son obligatorios; `parkingSpaceId` es opcional (elegido manualmente) y `notes` libre.
+- Crea una reserva interna en estado `ACTIVE` propiedad del operador, con el vehículo marcador global `WALK-IN` (sin tipo asociado), `startTime = ahora`, `endTime = ahora + 1 h` (provisional), `totalAmount = 0` y `checkedInAt = ahora`.
+- El espacio elegido pasa a `OCCUPIED` y `available_spaces` del lote se recuenta.
+- El cobro real se calcula al check-out (ver abajo), usando el tipo de vehículo del espacio asignado.
+
 #### Check-in / check-out
 
 ```http
@@ -338,7 +386,14 @@ PATCH /api/operator/reservations/6/check-in
 PATCH /api/operator/reservations/6/check-out
 ```
 
-El check-in pasa la reserva de `PENDING`/`CONFIRMED` a `ACTIVE`, marca el espacio como `OCCUPIED` y descuenta un espacio disponible. El check-out pasa la reserva a `COMPLETED`, libera el espacio y devuelve el cupo.
+El check-in pasa la reserva de `PENDING`/`CONFIRMED` a `ACTIVE`, marca el espacio como `OCCUPIED` y descuenta un espacio disponible.
+
+El check-out pasa la reserva a `COMPLETED`, libera el espacio y devuelve el cupo. Además **recalcula el monto final** con el tiempo real en cochera (`checkedInAt` → `checkedOutAt`) y la tarifa vigente:
+
+- Si el vehículo tiene tipo, se cobra con ese tipo.
+- Si el vehículo no tiene tipo (walk-ins), se usa el tipo del espacio asignado.
+
+El importe previo (estimado al crear la reserva) queda reemplazado por el final; los walk-ins pasan de `0.00` al cobro por horas reales.
 
 ---
 
@@ -354,7 +409,17 @@ Requiere `ROLE_ADMIN`.
 | `PUT` | `/api/admin/parking-lots/{id}/status` | Abrir/cerrar o activar/desactivar cochera |
 | `PUT` | `/api/admin/parking-lots/{id}/operator` | Asignar operador |
 | `DELETE` | `/api/admin/parking-lots/{id}` | Desactivar cochera (soft delete) |
+| `GET` | `/api/admin/reservations` | Todas las reservas del sistema (paginado) |
+| `GET` | `/api/admin/reservations/{id}` | Detalle de cualquier reserva |
 | `GET` | `/api/admin/statistics` | Estadísticas globales |
+
+#### Reservas del sistema
+
+```http
+GET /api/admin/reservations?status=ACTIVE&page=0&size=20
+```
+
+`status` es opcional; el listado incluye las reservas de todas las cocheras y el operador de origen no es verificado (el administrador puede ver todo). El detalle `GET /api/admin/reservations/{id}` devuelve el mismo `ReservationDetailResponse` del boarding pass.
 
 #### Activar / desactivar usuario
 
@@ -404,6 +469,7 @@ La respuesta incluye:
 - `activeReservations`
 - `completedReservations`
 - `cancelledReservations`
+- `noShowReservations`
 
 ---
 

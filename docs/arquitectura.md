@@ -18,7 +18,9 @@ PARKeo sigue una arquitectura cliente-servidor con separación de responsabilida
 └──────────────┬───────────────────────────┘
                │
                │ HTTP/REST + JWT Bearer Token
-               │ (10.0.2.2:8080 en emulador)
+               │ URL del backend: build lee BACKEND_URL de android/local.properties
+               │   · física en la misma red → http://10.146.116.216:8080/ (actual)
+               │   · emulador → http://10.0.2.2:8080/
                │
 ┌──────────────▼───────────────────────────┐
 │         Spring Boot Backend              │
@@ -74,7 +76,7 @@ android/app/src/main/java/pe/parkeo/
 │   ├── remote/
 │   │   ├── api/               # Interfaces Retrofit
 │   │   ├── dto/               # DTOs de la API
-│   │   └── interceptor/       # AuthInterceptor (Bearer token)
+│   │   └── interceptor/       # AuthInterceptor (Bearer token) + TokenAuthenticator (renovación por 401)
 │   ├── local/                 # DataStore (sesión y tokens)
 │   └── repository/            # Implementaciones de repositorio
 │
@@ -85,6 +87,8 @@ android/app/src/main/java/pe/parkeo/
 ```
 
 ### Principios aplicados
+
+> 📚 Cada concepto (Compose, ViewModel, StateFlow, coroutines, Retrofit/interceptores, DataStore, Navigation, WorkManager, DI manual) está explicado con código real de la app en **`docs/android.md`**.
 
 - **Separación por capas**: UI, ViewModel, dominio y datos.
 - **Repository Pattern**: las implementaciones de `data/repository` dependen de interfaces de `domain/repository`.
@@ -103,10 +107,11 @@ android/app/src/main/java/pe/parkeo/
 
 ### Funciones locales
 
-- Recordatorios de inicio y fin de reserva con **WorkManager**.
+- Recordatorios de inicio y fin de reserva con **WorkManager** (`ReminderScheduler`).
 - Notificaciones locales (Android 13+ requiere `POST_NOTIFICATIONS`).
-- Sesión persistida en **DataStore**.
-- Boarding pass con código QR generado localmente a partir del `confirmationCode`.
+- Sesión persistida en **DataStore** (tokens + preferencia de tema claro/oscuro/sistema).
+- Boarding pass con código QR generado localmente a partir del `confirmationCode`; el código `PKO-XXXXXXXX` es la llave del flujo del operador (búsqueda por código y check-in).
+- Tema claro/oscuro elegible desde Perfil (opción sincronizada en DataStore).
 
 ---
 
@@ -116,6 +121,15 @@ android/app/src/main/java/pe/parkeo/
 pe.parkeo/
 ├── controller/       # Endpoints HTTP y autorización con @PreAuthorize
 ├── service/          # Lógica de negocio y transacciones
+│   ├── ReservationService      # Crear/cancelar/check-in/check-out, walk-ins, ratings
+│   ├── AvailabilityService     # Espacios libres por rango y cálculo de tarifas
+│   ├── ParkingLotService       # Listado, búsqueda, cercanos, detalle, estadísticas
+│   ├── AuthService             # Registro, login, refresh con rotación, logout
+│   ├── LoginRateLimiter        # Bloqueo de login: 5 fallos / 15 min por email
+│   ├── ReservationExpiryService # Job: PENDING/CONFIRMED vencidas → NO_SHOW
+│   ├── RefreshTokenService     # Rotación y revocación de refresh tokens
+│   └── AuditService            # Escritura en audit_log (check-in/out, walk-in, cancelación)
+│                                  AuthService también tiene el cleanup diario a las 2:00 AM
 ├── repository/       # Acceso a datos con Spring Data JPA
 ├── entity/           # Entidades JPA mapeadas a MySQL
 ├── dto/
@@ -198,7 +212,7 @@ La disponibilidad se calcula con datos reales de la base de datos:
 2. Se buscan reservas con estado `PENDING`, `CONFIRMED` o `ACTIVE` que se solapen con el rango solicitado.
 3. Se excluyen los espacios con reservas superpuestas.
 4. El precio se calcula en el servidor usando las tarifas activas (`HOURLY`, `DAILY`, `WEEKLY`, `MONTHLY`, `FIXED`).
-5. `parking_lots.available_spaces` se mantiene como contador de disponibilidad y se ajusta en check-in/check-out.
+5. `parking_lots.available_spaces` se mantiene como contador de disponibilidad y se ajusta en check-in/check-out (se recalcula contando espacios `AVAILABLE`).
 
 Condición de solapamiento:
 
@@ -217,6 +231,17 @@ La creación de reservas usa:
 
 ---
 
+## Ciclo de vida de una reserva
+
+1. **Creación (cliente):** reserva en estado `CONFIRMED` con precio estimado por el servidor y espacio asignado; genera el `confirmationCode` (`PKO-XXXXXXXX`).
+2. **Expiración automática:** un job cada 60 s marca `NO_SHOW` las reservas `PENDING`/`CONFIRMED` cuya hora de inicio pasó con 15 min de gracia.
+3. **Cancelación (cliente):** `PENDING`/`CONFIRMED` → `CANCELLED` (asenta motivo y auditoría).
+4. **Check-in (operador o admin):** `PENDING`/`CONFIRMED` → `ACTIVE`; espacio → `OCCUPIED`; `checkedInAt = ahora`.
+5. **Check-out (operador o admin):** `ACTIVE` → `COMPLETED`; espacio → `AVAILABLE`; se recalcula el monto final con el tiempo real (`checkedInAt` → ahora) y la tarifa del tipo de vehículo (si el vehículo no tiene tipo —walk-ins— se usa el tipo del espacio).
+6. **Walk-in (operador):** sin reserva previa se crea directamente una reserva `ACTIVE` con estado 0.00 y el vehículo marcador global `WALK-IN`; el pago real se cobra en el check-out.
+
+---
+
 ## Decisiones de diseño
 
 | Decisión | Justificación |
@@ -232,6 +257,11 @@ La creación de reservas usa:
 | Haversine en JPQL | Búsqueda por radio sin dependencias externas |
 | Inyección manual en Android | Menor complejidad que Hilt para el tamaño actual del proyecto |
 | WorkManager para recordatorios | Recordatorios locales sin depender de un servidor de notificaciones |
+| `vehicles.vehicle_type_id` **NULLABLE** + `VehicleType` LAZY | El vehículo marcador `WALK-IN` no tiene tipo; la carga LAZY evita serializar la FK en cada response (`VehicleService.mapToResponse` la trata con null-safety) |
+| Checkout cobra por el tipo del espacio si el vehículo no tiene tipo | Los walk-ins siempre coinciden con el tipo que registró el operador al crear el ingreso |
+| Rate limiting en memoria (no Redis) | Suficiente para una instancia de desarrollo; documentado el límite de migrar a Redis |
+| 401 + `WWW-Authenticate: Bearer` como contrato de expiración | Permite al `TokenAuthenticator` de OkHttp detectar y refrescar tokens sin UI extra |
+| Vehículo marcador `WALK-IN` único por placa | Todos los ingresos sin reserva comparten una sola entidad; cada reserva guarda su espacio, tiempo y monto real |
 
 ---
 
